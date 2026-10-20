@@ -1,10 +1,5 @@
 name: Release
 
-# Publishes to PyPI when a GitHub release is published.
-# One-time setup: add this repository as a "trusted publisher" on PyPI
-# (https://docs.pypi.org/trusted-publishers/) with workflow name release.yml
-# and environment name "pypi". No API token is needed.
-
 on:
   release:
     types: [published]
