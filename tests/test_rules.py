@@ -525,3 +525,70 @@ def test_anchor_is_valid_violations(lint, source):
 )
 def test_anchor_is_valid_ok(lint, source):
     assert lint(source, "RL504") == []
+
+
+# --------------------------------------------------------------------------
+# RL402 autocomplete-valid
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "emial",
+        "nope",
+        "false",
+        "street",
+        "mobile street-address",  # contact type only before tel/email/impp
+        "shipping",  # address type without a field
+        "email email",
+        "on email",
+        "section- email",
+        "email webauthn extra",
+    ],
+)
+def test_autocomplete_violations(lint, value):
+    assert lint(f'<input name="x" autocomplete="{value}">', "RL402") == [("RL402", 1)]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "on",
+        "off",
+        "OFF",
+        "email",
+        "username",
+        "new-password",
+        "current-password webauthn",
+        "one-time-code",
+        "shipping street-address",
+        "billing postal-code",
+        "section-blue shipping address-line1",
+        "work email",
+        "home tel",
+        "mobile tel-national",
+        "section-a billing mobile tel",
+        "cc-number",
+        "  given-name  ",
+        "",
+        "{{ field.autocomplete }}",
+        "{% if a %}email{% else %}off{% endif %}",
+    ],
+)
+def test_autocomplete_ok(lint, value):
+    assert lint(f'<input name="x" autocomplete="{value}">', "RL402") == []
+
+
+def test_autocomplete_suggestion():
+    from ramplint import lint_source, select_rules
+
+    [violation] = lint_source('<input autocomplete="emial">', rules=select_rules(["RL402"]))
+    assert 'did you mean "email"?' in violation.message
+
+
+def test_autocomplete_on_select_textarea_and_form(lint):
+    assert lint('<select autocomplete="contry"></select>', "RL402") == [("RL402", 1)]
+    assert lint('<textarea autocomplete="street-adress"></textarea>', "RL402") == [("RL402", 1)]
+    assert lint('<form autocomplete="email"></form>', "RL402") == [("RL402", 1)]
+    assert lint('<form autocomplete="off"></form>', "RL402") == []

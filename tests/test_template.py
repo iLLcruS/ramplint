@@ -109,3 +109,29 @@ def test_branch_map_survives_unbalanced_fragments():
     branches = prepare(source).branches
     assert branches.at(1, source.index("<c>") + 1) == ()
     assert branches.at(99, 1) == ()
+
+
+def test_attribute_built_with_control_tags_is_dynamic():
+    from ramplint import dom
+
+    source = (
+        '<input autocomplete="{% if a %}email{% else %}off{% endif %}" '
+        'class=\'{% if b %}x{% endif %}\' name="q" id="{{ f.id }}">'
+    )
+    prepared = prepare(source)
+    [node] = dom.parse(prepared.html, source=source).iter("input")
+    assert node.is_dynamic("autocomplete")
+    assert node.is_dynamic("class")
+    assert node.is_dynamic("id")
+    assert not node.is_dynamic("name")
+    assert not node.is_dynamic("missing")
+
+
+def test_templated_attrs_on_later_lines():
+    from ramplint import dom
+
+    source = '<p>x</p>\n<div>\n  <a href="#"\n     tabindex="{% if a %}1{% endif %}">y</a>\n</div>'
+    prepared = prepare(source)
+    [node] = dom.parse(prepared.html, source=source).iter("a")
+    assert node.is_dynamic("tabindex")
+    assert not node.is_dynamic("href")

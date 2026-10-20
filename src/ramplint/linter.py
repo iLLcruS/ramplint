@@ -41,7 +41,7 @@ def lint_source(
     """Lint template source code and return the problems found."""
     active = list(rules) if rules is not None else select_rules()
     prepared = prepare(source)
-    root = dom.parse(prepared.html, branch_of=prepared.branches.at)
+    root = dom.parse(prepared.html, branch_of=prepared.branches.at, source=source)
     violations: set[Violation] = set()
     for rule in active:
         for node, message in rule.check(root):

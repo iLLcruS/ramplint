@@ -16,6 +16,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   viewport meta tag are reported (#4).
 - `RL504` anchor-is-valid: `<a href="#">`, `javascript:` links and `<a>` with a
   click handler but no `href` are reported; use `<button>` for actions (#5).
+- `RL402` autocomplete-valid: `autocomplete` values are checked against the HTML
+  autofill grammar, with "did you mean" suggestions for typos (#6).
 
 ## [0.1.0] - 2026-10-20
 
