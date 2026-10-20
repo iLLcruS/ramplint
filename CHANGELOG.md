@@ -14,6 +14,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - `RL503` no-positive-tabindex: `tabindex` greater than 0 is reported (#3).
 - `RL602` viewport-zoom: `user-scalable=no` and `maximum-scale` below 2 in the
   viewport meta tag are reported (#4).
+- `RL504` anchor-is-valid: `<a href="#">`, `javascript:` links and `<a>` with a
+  click handler but no `href` are reported; use `<button>` for actions (#5).
 
 ## [0.1.0] - 2026-10-20
 

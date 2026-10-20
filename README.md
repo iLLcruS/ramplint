@@ -42,11 +42,11 @@ examples/templates/base.html:3:1: RL601 <html> is missing a lang attribute; add 
 examples/templates/base.html:6:3: RL602 Viewport meta tag: user-scalable=no disables zooming; maximum-scale=1 limits zoom below 200%. Users must be able to zoom; remove these settings [viewport-zoom]
 examples/templates/base.html:13:5: RL502 <a> link has no accessible name; add text, an aria-label, or alt text on the image inside it [link-name]
 examples/templates/base.html:13:45: RL101 <img> is missing an alt attribute (use alt="" for decorative images) [img-alt]
-examples/templates/accounts/login.html:9:3: RL401 <input type="text"> has no associated label; add an id and a matching <label for>, or wrap it in a <label> (a placeholder is not a label) [form-label]
+examples/templates/accounts/login.html:10:3: RL401 <input type="text"> has no associated label; add an id and a matching <label for>, or wrap it in a <label> (a placeholder is not a label) [form-label]
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 30 problems in 6 of 8 files.
+Found 31 problems in 6 of 8 files.
 ```
 
 See [`examples/README.md`](examples/README.md) for what each demo template contains.
@@ -100,6 +100,7 @@ Files passed explicitly are always checked, whatever their extension.
 | `RL501` | `button-name`   | Buttons (including icon-only buttons) have an accessible name                            | 4.1.2 (A)        |
 | `RL502` | `link-name`     | Links have an accessible name                                                            | 2.4.4, 4.1.2 (A) |
 | `RL503` | `no-positive-tabindex` | `tabindex` is not greater than `0`                                                | 2.4.3 (A)        |
+| `RL504` | `anchor-is-valid` | Links have a real target (no `href="#"`, `javascript:` or click-only `<a>`)        | 2.1.1 (A)        |
 | `RL601` | `html-lang`     | `<html>` declares the page language                                                      | 3.1.1 (A)        |
 | `RL602` | `viewport-zoom` | `<meta name="viewport">` does not disable zoom (`user-scalable=no`, `maximum-scale` < 2) | 1.4.4 (AA)       |
 
@@ -202,6 +203,19 @@ widgets whose attributes are rendered dynamically (`<input {{ widget.attrs }}>`)
 
 A positive `tabindex` moves the element to the front of the keyboard focus
 order, ahead of everything else on the page. Reorder the markup instead.
+
+#### RL504 `anchor-is-valid`
+
+```django
+{# ✗ #} <a href="#" onclick="addToWishlist()">Add to wishlist</a>
+{# ✗ #} <a href="javascript:void(0)">Open chat</a>
+{# ✗ #} <a onclick="openMenu()">Menu</a>
+{# ✓ #} <button type="button" onclick="addToWishlist()">Add to wishlist</button>
+{# ✓ #} <a href="#reviews">Jump to reviews</a>
+```
+
+Links navigate, buttons act. A fake link is missing from the keyboard focus
+order (no `href`) or does not react to the Space key like a button would.
 
 #### RL601 `html-lang`
 
