@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block content %}
+<h2>{% trans "Your orders" %}</h2>
+
+<a href="{% url 'orders:export' %}"><i class="icon-download"></i></a>
+
+<form method="get" action="{% url 'orders:list' %}">
+  <input type="search" name="q" placeholder="{% trans 'Search orders' %}">
+  <button type="submit"><svg class="icon"><use href="#icon-search"></use></svg></button>
+</form>
+
+<h4>{% trans "Recent" %}</h4>
+
+<table class="orders">
+  <tr>
+    <td>{% trans "Order" %}</td>
+    <td>{% trans "Total" %}</td>
+  </tr>
+  {% for order in orders %}
+  <tr>
+    <td><img src="{% static 'img/status.png' %}"> {{ order.number }}</td>
+    <td>{{ order.total }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

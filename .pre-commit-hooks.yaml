@@ -1,0 +1,7 @@
+- id: ramplint
+  name: ramplint
+  description: Accessibility linter for Django and Jinja2 templates
+  entry: ramplint
+  language: python
+  types: [file]
+  files: \.(html?|jinja2?|j2|djhtml)$

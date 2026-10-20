@@ -1,0 +1,282 @@
+from __future__ import annotations
+
+import pytest
+
+# --------------------------------------------------------------------------
+# RL101 img-alt
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<img src="a.png">',
+        '<input type="image" src="go.png">',
+        '<input type="IMAGE" src="go.png" alt="">',
+        '<map><area href="/x" shape="rect" coords="0,0,1,1"></map>',
+    ],
+)
+def test_img_alt_violations(lint, source):
+    assert lint(source, "RL101") == [("RL101", 1)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<img src="a.png" alt="Logo">',
+        '<img src="a.png" alt="">',
+        '<img src="a.png" alt>',
+        '<img src="a.png" alt="{{ product.name }}">',
+        '<img src="a.png" aria-label="Logo">',
+        '<img src="a.png" {{ attrs }}>',
+        '<img src="a.png" {% include "alt.html" %}>',
+        '<input type="image" src="go.png" alt="Search">',
+        '<area shape="rect" coords="0,0,1,1">',
+    ],
+)
+def test_img_alt_ok(lint, source):
+    assert lint(source, "RL101") == []
+
+
+# --------------------------------------------------------------------------
+# RL201 table-header
+# --------------------------------------------------------------------------
+
+
+def test_table_without_th(lint):
+    source = """
+    <table>
+      <tr><td>Name</td><td>Price</td></tr>
+      {% for p in products %}<tr><td>{{ p.name }}</td><td>{{ p.price }}</td></tr>{% endfor %}
+    </table>
+    """
+    assert lint(source, "RL201") == [("RL201", 2)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "<table><tr><th>Name</th></tr><tr><td>x</td></tr></table>",
+        '<table><thead><tr><th scope="col">Name</th></tr></thead></table>',
+        '<table role="presentation"><tr><td>layout</td></tr></table>',
+        '<table role="none"><tr><td>layout</td></tr></table>',
+        '<table>{% include "orders/rows.html" %}</table>',
+        "<table>{% block rows %}{% endblock %}</table>",
+        "<table>{{ form.as_table }}</table>",
+        "<table><tbody>{{ rows|safe }}</tbody></table>",
+    ],
+)
+def test_table_ok(lint, source):
+    assert lint(source, "RL201") == []
+
+
+def test_nested_table_th_does_not_count_for_outer(lint):
+    source = "<table><tr><td><table><tr><th>x</th></tr></table></td></tr></table>"
+    assert lint(source, "RL201") == [("RL201", 1)]
+
+
+def test_aria_columnheader_is_not_enough(lint):
+    source = '<table><tr><td role="columnheader">Name</td></tr></table>'
+    assert lint(source, "RL201") == [("RL201", 1)]
+
+
+def test_variable_inside_cell_does_not_hide_problem(lint):
+    assert lint("<table><tr><td>{{ value }}</td></tr></table>", "RL201") == [("RL201", 1)]
+
+
+# --------------------------------------------------------------------------
+# RL301 heading-order / RL302 empty-heading
+# --------------------------------------------------------------------------
+
+
+def test_heading_skip(lint):
+    source = """
+    <h1>Title</h1>
+    <h2>Section</h2>
+    <h4>Oops</h4>
+    """
+    assert lint(source, "RL301") == [("RL301", 4)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "<h1>a</h1><h2>b</h2><h3>c</h3><h2>d</h2><h3>e</h3>",
+        "<h1>a</h1><h2>b</h2><h3>c</h3><h1>d</h1>",
+        # Fragment that starts below h1 - the parent template owns the h1.
+        "{% block content %}<h2>a</h2><h3>b</h3>{% endblock %}",
+        "<h3>first heading sets the baseline</h3>",
+    ],
+)
+def test_heading_order_ok(lint, source):
+    assert lint(source, "RL301") == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "<h2></h2>",
+        "<h2>   </h2>",
+        "<h2>{% if x %}{% endif %}</h2>",
+        '<h2><i class="icon"></i></h2>',
+    ],
+)
+def test_empty_heading(lint, source):
+    assert lint(source, "RL302") == [("RL302", 1)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "<h2>{{ title }}</h2>",
+        '<h2>{% trans "Orders" %}</h2>',
+        "<h1>{% block title %}{% endblock %}</h1>",
+        '<h2><img src="logo.png" alt="ACME"></h2>',
+        '<h2 aria-label="Orders"></h2>',
+        '<h2 aria-hidden="true"></h2>',
+    ],
+)
+def test_heading_with_content(lint, source):
+    assert lint(source, "RL302") == []
+
+
+# --------------------------------------------------------------------------
+# RL401 form-label
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<input type="text" name="q">',
+        '<input name="q" placeholder="Search">',
+        '<input type="email" id="email">',
+        '<label for="other">Email</label><input type="email" id="email">',
+        "<select name=s><option>1</option></select>",
+        "<textarea name=t></textarea>",
+    ],
+)
+def test_form_label_violations(lint, source):
+    assert [code for code, _ in lint(source, "RL401")] == ["RL401"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<label for="email">Email</label><input type="email" id="email">',
+        '<input type="email" id="email"><label for="email">Email</label>',
+        "<label>Email <input type=email name=email></label>",
+        '<input type="text" aria-label="Search">',
+        '<input type="text" aria-labelledby="search-label">',
+        '<input type="text" title="Search">',
+        '<input type="hidden" name="next">',
+        '<input type="submit" value="Go">',
+        '<input type="reset">',
+        '<input type="button" value="x">',
+        '<input type="image" alt="Go" src="go.png">',
+        '<input type="text" hidden>',
+        "<input {{ widget.attrs }}>",
+        '<input type="{{ widget.type }}" name="x">',
+        '<input type="text" id="{{ field.id_for_label }}">',
+        '<label for="{{ field.id_for_label }}">x</label><input type="text" id="id_name">',
+    ],
+)
+def test_form_label_ok(lint, source):
+    assert lint(source, "RL401") == []
+
+
+# --------------------------------------------------------------------------
+# RL501 button-name / RL502 link-name
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "<button></button>",
+        '<button><i class="fa fa-trash"></i></button>',
+        '<button><svg><path d="M0"/></svg></button>',
+        '<button><img src="x.png"></button>',
+        '<button><img src="x.png" alt=""></button>',
+        '<button><span aria-hidden="true">X</span></button>',
+        '<input type="button">',
+        '<div role="button"></div>',
+    ],
+)
+def test_button_name_violations(lint, source):
+    assert lint(source, "RL501") == [("RL501", 1)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "<button>Save</button>",
+        "<button>{{ label }}</button>",
+        '<button>{% trans "Save" %}</button>',
+        '<button aria-label="Delete"><i class="fa fa-trash"></i></button>',
+        '<button title="Delete"><i class="fa fa-trash"></i></button>',
+        '<button><img src="x.png" alt="Delete"></button>',
+        "<button><svg><title>Delete</title></svg></button>",
+        '<button><svg aria-label="Delete"></svg></button>',
+        '<button><span class="sr-only">Delete</span><i class="fa"></i></button>',
+        '<button>{% include "icons/trash.html" %}</button>',
+        "<button {{ attrs }}></button>",
+        '<input type="submit">',
+        '<input type="button" value="Go">',
+        '<div role="button" tabindex="0">Menu</div>',
+    ],
+)
+def test_button_name_ok(lint, source):
+    assert lint(source, "RL501") == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<a href="/"></a>',
+        '<a href="{% url \'home\' %}"><i class="icon-home"></i></a>',
+        '<a href="/"><img src="logo.png"></a>',
+        '<a href="/"><img src="logo.png" alt=""></a>',
+    ],
+)
+def test_link_name_violations(lint, source):
+    assert lint(source, "RL502") == [("RL502", 1)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<a href="/">Home</a>',
+        '<a href="/">{{ user.username }}</a>',
+        '<a href="/" aria-label="Home"><i class="icon-home"></i></a>',
+        '<a href="/"><img src="logo.png" alt="ACME home"></a>',
+        '<a name="anchor"></a>',
+        '<a id="top"></a>',
+        '<a href="/">{% include "logo.html" %}</a>',
+    ],
+)
+def test_link_name_ok(lint, source):
+    assert lint(source, "RL502") == []
+
+
+# --------------------------------------------------------------------------
+# RL601 html-lang
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("source", ["<html><body></body></html>", '<html lang=""></html>'])
+def test_html_lang_violations(lint, source):
+    assert lint(source, "RL601") == [("RL601", 1)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<html lang="en"></html>',
+        '<html lang="{{ LANGUAGE_CODE }}"></html>',
+        "<html {% block html_attrs %}{% endblock %}></html>",
+        "<div>no html element in partial templates</div>",
+    ],
+)
+def test_html_lang_ok(lint, source):
+    assert lint(source, "RL601") == []

@@ -1,0 +1,21 @@
+{% load static i18n %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Shoply{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <header class="site-header">
+    <a href="{% url 'home' %}" class="logo"><img src="{% static 'img/logo.svg' %}"></a>
+    {% include "partials/navbar.html" %}
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  {% include "partials/footer.html" %}
+</body>
+</html>

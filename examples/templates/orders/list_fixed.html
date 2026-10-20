@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block content %}
+<h2>{% trans "Your orders" %}</h2>
+
+<a href="{% url 'orders:export' %}" aria-label="{% trans 'Export orders' %}"><i class="icon-download" aria-hidden="true"></i></a>
+
+<form method="get" action="{% url 'orders:list' %}">
+  <label for="order-search">{% trans "Search orders" %}</label>
+  <input type="search" id="order-search" name="q">
+  <button type="submit" aria-label="{% trans 'Search' %}"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg></button>
+</form>
+
+<h3>{% trans "Recent" %}</h3>
+
+<table class="orders">
+  <tr>
+    <th scope="col">{% trans "Order" %}</th>
+    <th scope="col">{% trans "Total" %}</th>
+  </tr>
+  {% for order in orders %}
+  <tr>
+    <td><img src="{% static 'img/status.png' %}" alt="{{ order.get_status_display }}"> {{ order.number }}</td>
+    <td>{{ order.total }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{# Nothing in this file should be reported. It shows the template patterns  #}
+{# that ramplint understands instead of flagging them as false positives.  #}
+
+{% block content %}
+<h2>{% block page_title %}{% endblock %}</h2>
+<h3>{% trans "Details" %}</h3>
+
+{# Rows rendered by Django - ramplint cannot see them, so it stays quiet. #}
+<table>{{ form.as_table }}</table>
+<table>{% include "orders/rows.html" %}</table>
+
+{# Layout table explicitly marked as such. #}
+<table role="presentation"><tr><td>{{ left }}</td><td>{{ right }}</td></tr></table>
+
+<form method="post">
+  {% csrf_token %}
+  {# Label and input ids come from the form field. #}
+  <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+  <input type="email" id="{{ form.email.id_for_label }}" name="email">
+
+  {# Attributes rendered by the widget itself. #}
+  <input {{ widget.attrs }}>
+
+  {# Wrapped label, hidden and submit inputs. #}
+  <label>{% trans "Remember me" %} <input type="checkbox" name="remember"></label>
+  <input type="hidden" name="next" value="{{ next }}">
+  <input type="submit" value="{% trans 'Save' %}">
+</form>
+
+{# Text, translations and includes all count as accessible names. #}
+<button type="button">{{ button_label }}</button>
+<button type="button" aria-label="{% trans 'Close' %}"><i class="icon-x" aria-hidden="true"></i></button>
+<a href="{% url 'help' %}">{% include "icons/help.html" %}</a>
+<a href="{{ product.get_absolute_url }}"><img src="{{ product.thumb.url }}" alt="{{ product.name }}"></a>
+
+{# Decorative image with an intentionally empty alt. #}
+<img src="{% static 'img/divider.png' %}" alt="">
+
+{# A known exception, silenced inline. #}
+<img src="{% static 'img/tracking-pixel.gif' %}"> {# ramplint: ignore img-alt #}
+{% endblock %}

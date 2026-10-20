@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<h1>{% trans "Sign in" %}</h1>
+
+<form method="post" class="login-form">
+  {% csrf_token %}
+  <input type="text" name="username" placeholder="{% trans 'Username' %}">
+  <input type="password" name="password" placeholder="{% trans 'Password' %}">
+
+  <select name="language">
+    <option value="en">English</option>
+    <option value="ro">Română</option>
+  </select>
+
+  <input type="button" class="show-password">
+  <button type="submit"><i class="icon icon-arrow-right"></i></button>
+</form>
+{% endblock %}

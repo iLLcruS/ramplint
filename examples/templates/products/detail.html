@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block content %}
+<h1>{{ product.name }}</h1>
+
+<div class="gallery">
+  {% for image in product.images.all %}
+    <img src="{{ image.file.url }}" class="gallery-item" alt="Photo">
+  {% endfor %}
+</div>
+
+<h3>{% trans "Specifications" %}</h3>
+<table class="specs">
+  {% for spec in product.specs.all %}
+  <tr>
+    <td>{{ spec.name }}</td>
+    <td>{{ spec.value }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h2 class="section-title"></h2>
+
+<form method="post" action="{% url 'cart:add' product.pk %}">
+  {% csrf_token %}
+  <input type="number" name="quantity" value="1" min="1">
+  <input type="image" src="{% static 'img/add-to-cart.png' %}">
+</form>
+{% endblock %}
