@@ -434,3 +434,53 @@ def test_positive_tabindex_message(lint):
 
     [violation] = lint_source('<a href="/" tabindex="3">x</a>', rules=select_rules(["RL503"]))
     assert 'tabindex="3"' in violation.message
+
+
+# --------------------------------------------------------------------------
+# RL602 viewport-zoom
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "width=device-width, user-scalable=no",
+        "width=device-width, user-scalable=0",
+        "width=device-width,user-scalable=NO",
+        "width=device-width; user-scalable = no",
+        "width=device-width, maximum-scale=1",
+        "width=device-width, maximum-scale=1.5",
+        "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
+    ],
+)
+def test_viewport_zoom_violations(lint, content):
+    assert lint(f'<meta name="viewport" content="{content}">', "RL602") == [("RL602", 1)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        '<meta name="viewport" content="width=device-width, user-scalable=yes">',
+        '<meta name="viewport" content="width=device-width, maximum-scale=2">',
+        '<meta name="viewport" content="width=device-width, maximum-scale=5">',
+        '<meta name="viewport" content="width=device-width, maximum-scale={{ max_zoom }}">',
+        '<meta name="viewport" content="{{ viewport }}">',
+        '<meta name="viewport" content="maximum-scale=abc">',
+        '<meta name="viewport" content="maximum-scale=0">',
+        '<meta name="viewport" content="maximum-scale=-1">',
+        '<meta name="description" content="user-scalable=no">',
+        '<meta charset="utf-8">',
+    ],
+)
+def test_viewport_zoom_ok(lint, source):
+    assert lint(source, "RL602") == []
+
+
+def test_viewport_zoom_reports_both_problems_once(lint):
+    from ramplint import lint_source, select_rules
+
+    source = '<meta name="Viewport" content="maximum-scale=1, user-scalable=no">'
+    [violation] = lint_source(source, rules=select_rules(["RL602"]))
+    assert "user-scalable=no" in violation.message
+    assert "maximum-scale=1" in violation.message

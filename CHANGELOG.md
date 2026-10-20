@@ -12,6 +12,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - `RL303` duplicate-id: `id` values must be unique; the same id in mutually
   exclusive `{% if %}` / `{% else %}` branches is allowed (#2).
 - `RL503` no-positive-tabindex: `tabindex` greater than 0 is reported (#3).
+- `RL602` viewport-zoom: `user-scalable=no` and `maximum-scale` below 2 in the
+  viewport meta tag are reported (#4).
 
 ## [0.1.0] - 2026-10-20
 

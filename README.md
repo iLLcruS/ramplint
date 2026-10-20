@@ -39,13 +39,14 @@ ramplint examples/
 
 ```console
 examples/templates/base.html:3:1: RL601 <html> is missing a lang attribute; add e.g. lang="en" or lang="{{ LANGUAGE_CODE }}" [html-lang]
-examples/templates/base.html:11:5: RL502 <a> link has no accessible name; add text, an aria-label, or alt text on the image inside it [link-name]
-examples/templates/base.html:11:45: RL101 <img> is missing an alt attribute (use alt="" for decorative images) [img-alt]
+examples/templates/base.html:6:3: RL602 Viewport meta tag: user-scalable=no disables zooming; maximum-scale=1 limits zoom below 200%. Users must be able to zoom; remove these settings [viewport-zoom]
+examples/templates/base.html:13:5: RL502 <a> link has no accessible name; add text, an aria-label, or alt text on the image inside it [link-name]
+examples/templates/base.html:13:45: RL101 <img> is missing an alt attribute (use alt="" for decorative images) [img-alt]
 examples/templates/accounts/login.html:9:3: RL401 <input type="text"> has no associated label; add an id and a matching <label for>, or wrap it in a <label> (a placeholder is not a label) [form-label]
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 29 problems in 6 of 8 files.
+Found 30 problems in 6 of 8 files.
 ```
 
 See [`examples/README.md`](examples/README.md) for what each demo template contains.
@@ -100,6 +101,7 @@ Files passed explicitly are always checked, whatever their extension.
 | `RL502` | `link-name`     | Links have an accessible name                                                            | 2.4.4, 4.1.2 (A) |
 | `RL503` | `no-positive-tabindex` | `tabindex` is not greater than `0`                                                | 2.4.3 (A)        |
 | `RL601` | `html-lang`     | `<html>` declares the page language                                                      | 3.1.1 (A)        |
+| `RL602` | `viewport-zoom` | `<meta name="viewport">` does not disable zoom (`user-scalable=no`, `maximum-scale` < 2) | 1.4.4 (AA)       |
 
 <details>
 <summary><strong>Examples for every rule</strong></summary>
@@ -207,6 +209,16 @@ order, ahead of everything else on the page. Reorder the markup instead.
 {# ✗ #} <html>
 {# ✓ #} <html lang="{{ LANGUAGE_CODE }}">
 ```
+
+#### RL602 `viewport-zoom`
+
+```django
+{# ✗ #} <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+{# ✗ #} <meta name="viewport" content="width=device-width, maximum-scale=1">
+{# ✓ #} <meta name="viewport" content="width=device-width, initial-scale=1">
+```
+
+Low-vision users rely on pinch-to-zoom; WCAG requires text to be resizable up to 200%.
 
 </details>
 
