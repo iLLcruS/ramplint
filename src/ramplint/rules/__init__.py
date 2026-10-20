@@ -5,7 +5,15 @@ Importing this package registers every rule in :data:`REGISTRY`.
 
 from __future__ import annotations
 
-from ramplint.rules import controls, document, forms, headings, images, tables  # noqa: F401
+from ramplint.rules import (  # noqa: F401
+    controls,
+    document,
+    embeds,
+    forms,
+    headings,
+    images,
+    tables,
+)
 from ramplint.rules.base import REGISTRY, Rule
 
 
