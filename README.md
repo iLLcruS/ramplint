@@ -45,7 +45,7 @@ examples/templates/accounts/login.html:9:3: RL401 <input type="text"> has no ass
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 26 problems in 6 of 8 files.
+Found 27 problems in 6 of 8 files.
 ```
 
 See [`examples/README.md`](examples/README.md) for what each demo template contains.
@@ -90,6 +90,7 @@ Files passed explicitly are always checked, whatever their extension.
 | Code    | Name            | What it checks                                                                           | WCAG             |
 |---------|-----------------|------------------------------------------------------------------------------------------|------------------|
 | `RL101` | `img-alt`       | `<img>` has an `alt` attribute; `<input type="image">` and `<area>` have non-empty `alt` | 1.1.1 (A)        |
+| `RL102` | `iframe-title`  | `<iframe>` has a `title` describing its content                                          | 4.1.2 (A)        |
 | `RL201` | `table-header`  | Data tables use real `<th>` header cells                                                 | 1.3.1 (A)        |
 | `RL301` | `heading-order` | Heading levels do not skip (`<h2>` → `<h4>`)                                             | 1.3.1 (A)        |
 | `RL302` | `empty-heading` | Headings are not empty                                                                   | 2.4.6 (AA)       |
@@ -109,6 +110,15 @@ Files passed explicitly are always checked, whatever their extension.
 {# ✓ #} <img src="{% static 'divider.png' %}" alt="">   {# decorative #}
 {# ✓ #} <img src="{{ product.image.url }}" alt="{{ product.name }}">
 ```
+
+#### RL102 `iframe-title`
+
+```django
+{# ✗ #} <iframe src="https://www.youtube.com/embed/{{ video.id }}"></iframe>
+{# ✓ #} <iframe src="https://www.youtube.com/embed/{{ video.id }}" title="{{ video.title }}"></iframe>
+```
+
+Frames hidden with `aria-hidden="true"` are skipped.
 
 #### RL201 `table-header`
 

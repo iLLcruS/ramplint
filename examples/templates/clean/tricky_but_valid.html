@@ -36,6 +36,10 @@
 <a href="{% url 'help' %}">{% include "icons/help.html" %}</a>
 <a href="{{ product.get_absolute_url }}"><img src="{{ product.thumb.url }}" alt="{{ product.name }}"></a>
 
+{# Frames: title from a variable, and a hidden tracking frame. #}
+<iframe src="{{ video.embed_url }}" title="{{ video.title }}"></iframe>
+<iframe src="https://example.com/pixel" aria-hidden="true" tabindex="-1"></iframe>
+
 {# Decorative image with an intentionally empty alt. #}
 <img src="{% static 'img/divider.png' %}" alt="">
 

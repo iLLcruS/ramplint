@@ -4,6 +4,8 @@
   <a href="https://instagram.com/shoply"><svg class="icon"><use href="#instagram"></use></svg></a>
   <a href="https://facebook.com/shoply"><svg class="icon"><use href="#facebook"></use></svg></a>
 
+  <iframe src="https://www.openstreetmap.org/export/embed.html?bbox=26.08,44.42,26.12,44.44" loading="lazy"></iframe>
+
   <form method="post" action="{% url 'newsletter:subscribe' %}">
     {% csrf_token %}
     <input type="email" name="email" placeholder="{% trans 'Your email' %}">
