@@ -6,6 +6,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `RL102` iframe-title: `<iframe>` and `<frame>` elements must have a title (#1).
+
 ## [0.1.0] - 2026-10-20
 
 ### Added

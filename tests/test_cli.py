@@ -101,7 +101,7 @@ def test_list_rules(capsys):
     assert main(["--list-rules"]) == EXIT_OK
     out = capsys.readouterr().out
     assert "RL101  img-alt" in out
-    assert out.count("\n") == 8
+    assert out.count("\n") == len(all_rules())
 
 
 def test_version(capsys):
@@ -119,7 +119,7 @@ def test_examples_directory(capsys, monkeypatch):
     for v in data["violations"]:
         by_file.setdefault(Path(v["path"]).name, []).append(v["code"])
     assert data["files_checked"] == 8
-    assert len(data["violations"]) == 26
+    assert len(data["violations"]) == 27
     # Clean templates must stay silent - they guard against false positives.
     assert "list_fixed.html" not in by_file
     assert "tricky_but_valid.html" not in by_file

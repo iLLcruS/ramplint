@@ -39,6 +39,53 @@ def test_img_alt_ok(lint, source):
 
 
 # --------------------------------------------------------------------------
+# RL102 iframe-title
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<iframe src="https://example.com/map"></iframe>',
+        '<iframe src="/video" title=""></iframe>',
+        '<iframe src="/video" title="   "></iframe>',
+        '<iframe src="/video" aria-hidden="false"></iframe>',
+        '<iframe src="{{ video.url }}"></iframe>',
+        '<frameset><frame src="nav.html"></frameset>',
+    ],
+)
+def test_iframe_title_violations(lint, source):
+    assert lint(source, "RL102") == [("RL102", 1)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<iframe src="/map" title="Store location map"></iframe>',
+        '<iframe src="/video" title="{{ video.title }}"></iframe>',
+        '<iframe src="/video" title="{% trans \'Product video\' %}"></iframe>',
+        '<iframe src="/video" aria-label="Product video"></iframe>',
+        '<iframe src="/video" aria-labelledby="video-heading"></iframe>',
+        '<iframe src="/video" {{ attrs }}></iframe>',
+        '<iframe src="/pixel" aria-hidden="true"></iframe>',
+        '<iframe src="/pixel" aria-hidden="TRUE"></iframe>',
+    ],
+)
+def test_iframe_title_ok(lint, source):
+    assert lint(source, "RL102") == []
+
+
+def test_iframe_title_position(lint):
+    source = """
+    <div>
+      <iframe src="/a" title="A"></iframe>
+      <iframe src="/b"></iframe>
+    </div>
+    """
+    assert lint(source, "RL102") == [("RL102", 4)]
+
+
+# --------------------------------------------------------------------------
 # RL201 table-header
 # --------------------------------------------------------------------------
 
