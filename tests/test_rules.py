@@ -391,3 +391,46 @@ def test_html_lang_violations(lint, source):
 )
 def test_html_lang_ok(lint, source):
     assert lint(source, "RL601") == []
+
+
+# --------------------------------------------------------------------------
+# RL503 no-positive-tabindex
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<a href="/" tabindex="1">Home</a>',
+        '<div tabindex="5">x</div>',
+        '<input name="q" tabindex=" 32767 ">',
+        '<button tabindex="+2">Go</button>',
+        '<a href="/" tabindex="1" {{ attrs }}>Home</a>',
+    ],
+)
+def test_positive_tabindex_violations(lint, source):
+    assert lint(source, "RL503") == [("RL503", 1)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<div tabindex="0">x</div>',
+        '<div tabindex="-1">x</div>',
+        '<div tabindex="00">x</div>',
+        '<div tabindex="">x</div>',
+        '<div tabindex="abc">x</div>',
+        '<div tabindex="{{ order }}">x</div>',
+        '<div tabindex="{% if a %}1{% else %}0{% endif %}">x</div>',
+        "<div>no tabindex</div>",
+    ],
+)
+def test_positive_tabindex_ok(lint, source):
+    assert lint(source, "RL503") == []
+
+
+def test_positive_tabindex_message(lint):
+    from ramplint import lint_source, select_rules
+
+    [violation] = lint_source('<a href="/" tabindex="3">x</a>', rules=select_rules(["RL503"]))
+    assert 'tabindex="3"' in violation.message
