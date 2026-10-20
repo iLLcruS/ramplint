@@ -6,7 +6,7 @@
 
 <div class="gallery">
   {% for image in product.images.all %}
-    <img src="{{ image.file.url }}" class="gallery-item" alt="Photo">
+    <img src="{{ image.file.url }}" class="gallery-item">
   {% endfor %}
 </div>
 
