@@ -18,6 +18,7 @@ newlines, so reported positions always point at the real template source.
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 from dataclasses import dataclass, field
 
 #: Placeholder for text that only exists at render time.
@@ -84,10 +85,84 @@ class Suppressions:
         return False
 
 
+#: Position inside conditional template blocks: one ``(block_id, branch_index)``
+#: pair per enclosing ``{% if %}`` / ``{% for %}`` / ``{% ifchanged %}``.
+BranchPath = tuple[tuple[int, int], ...]
+
+_BLOCK_OPENERS = {"if": "if", "ifchanged": "ifchanged", "for": "for"}
+_BLOCK_CLOSERS = {"endif": "if", "endifchanged": "ifchanged", "endfor": "for"}
+_BLOCK_SPLITTERS = frozenset({"elif", "else", "empty"})
+
+
+@dataclass
+class BranchMap:
+    """Maps a source position to the template branch it belongs to."""
+
+    line_starts: list[int]
+    offsets: list[int] = field(default_factory=lambda: [0])
+    paths: list[BranchPath] = field(default_factory=lambda: [()])
+
+    def at(self, line: int, col: int) -> BranchPath:
+        if not 1 <= line <= len(self.line_starts):
+            return ()
+        offset = self.line_starts[line - 1] + col - 1
+        return self.paths[bisect_right(self.offsets, offset) - 1]
+
+
+def mutually_exclusive(a: BranchPath, b: BranchPath) -> bool:
+    """True if two positions can never be rendered together.
+
+    That is the case when they sit in different branches of the same
+    ``{% if %}`` / ``{% elif %}`` / ``{% else %}`` (or ``{% for %}`` /
+    ``{% empty %}``) block.
+    """
+    for (block_a, branch_a), (block_b, branch_b) in zip(a, b, strict=False):
+        if block_a != block_b:
+            return False
+        if branch_a != branch_b:
+            return True
+    return False
+
+
+def _build_branch_map(source: str) -> BranchMap:
+    line_starts = [0]
+    for index, char in enumerate(source):
+        if char == "\n":
+            line_starts.append(index + 1)
+    branch_map = BranchMap(line_starts=line_starts)
+
+    stack: list[list] = []  # [block_id, branch_index, kind]
+    next_block_id = 0
+    for match in _TOKEN_RE.finditer(source):
+        name_match = _TAG_NAME_RE.match(match.group(0))
+        if not name_match:
+            continue
+        name = name_match.group(1)
+        if name in _BLOCK_OPENERS:
+            next_block_id += 1
+            stack.append([next_block_id, 0, _BLOCK_OPENERS[name]])
+        elif name in _BLOCK_SPLITTERS and stack:
+            stack[-1][1] += 1
+        elif name in _BLOCK_CLOSERS:
+            kind = _BLOCK_CLOSERS[name]
+            for index in range(len(stack) - 1, -1, -1):
+                if stack[index][2] == kind:
+                    del stack[index:]
+                    break
+            else:
+                continue  # stray closing tag in a fragment
+        else:
+            continue
+        branch_map.offsets.append(match.end())
+        branch_map.paths.append(tuple((block, branch) for block, branch, _ in stack))
+    return branch_map
+
+
 @dataclass
 class PreparedTemplate:
     html: str
     suppressions: Suppressions
+    branches: BranchMap
 
 
 def _blank(token: str) -> str:
@@ -144,6 +219,7 @@ def _parse_suppressions(source: str) -> Suppressions:
 def prepare(source: str) -> PreparedTemplate:
     """Turn template source into parseable HTML of identical geometry."""
     suppressions = _parse_suppressions(source)
-    html = _COMMENT_BLOCK_RE.sub(lambda m: _blank(m.group(0)), source)
-    html = _TOKEN_RE.sub(_replace_token, html)
-    return PreparedTemplate(html=html, suppressions=suppressions)
+    without_comments = _COMMENT_BLOCK_RE.sub(lambda m: _blank(m.group(0)), source)
+    branches = _build_branch_map(without_comments)
+    html = _TOKEN_RE.sub(_replace_token, without_comments)
+    return PreparedTemplate(html=html, suppressions=suppressions, branches=branches)

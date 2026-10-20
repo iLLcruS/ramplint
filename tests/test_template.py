@@ -85,3 +85,27 @@ def test_unbalanced_fragment_does_not_crash():
 def test_script_content_is_ignored():
     source = '<script>const html = "<img src=x>";</script>'
     assert lint_source(source) == []
+
+
+def test_branch_map_tracks_if_else():
+    from ramplint.template import mutually_exclusive
+
+    source = "<a>{% if x %}<b>{% elif y %}<c>{% else %}<d>{% endif %}<e>"
+    branches = prepare(source).branches
+
+    def path(tag):
+        return branches.at(1, source.index(tag) + 1)
+
+    assert path("<a>") == ()
+    assert path("<e>") == ()
+    assert mutually_exclusive(path("<b>"), path("<c>"))
+    assert mutually_exclusive(path("<c>"), path("<d>"))
+    assert not mutually_exclusive(path("<a>"), path("<b>"))
+    assert not mutually_exclusive(path("<b>"), path("<b>"))
+
+
+def test_branch_map_survives_unbalanced_fragments():
+    source = "{% endif %}<a>{% else %}<b>{% endfor %}<c>"
+    branches = prepare(source).branches
+    assert branches.at(1, source.index("<c>") + 1) == ()
+    assert branches.at(99, 1) == ()

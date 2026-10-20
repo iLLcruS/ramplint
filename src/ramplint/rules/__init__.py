@@ -11,6 +11,7 @@ from ramplint.rules import (  # noqa: F401
     embeds,
     forms,
     headings,
+    ids,
     images,
     tables,
 )

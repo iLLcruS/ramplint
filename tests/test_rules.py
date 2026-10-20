@@ -188,6 +188,70 @@ def test_heading_with_content(lint, source):
 
 
 # --------------------------------------------------------------------------
+# RL303 duplicate-id
+# --------------------------------------------------------------------------
+
+
+def test_duplicate_id_reported_on_second_occurrence(lint):
+    source = """
+    <label for="email">Email</label>
+    <input id="email" type="email">
+    <p id="email">We never share your email.</p>
+    """
+    assert lint(source, "RL303") == [("RL303", 4)]
+
+
+def test_duplicate_id_message_points_to_first(lint):
+    from ramplint import lint_source, select_rules
+
+    [violation] = lint_source('<p id="x">\n<p id="x">', rules=select_rules(["RL303"]))
+    assert 'Duplicate id "x" (first used on line 1)' in violation.message
+
+
+def test_every_extra_occurrence_is_reported(lint):
+    assert lint('<p id="z">\n<p id="z">\n<p id="z">', "RL303") == [("RL303", 2), ("RL303", 3)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        # Two separate {% if %} blocks can both render.
+        '{% if a %}<p id="m">{% endif %}{% if b %}<p id="m">{% endif %}',
+        # One outside any branch, one inside.
+        '<p id="m">{% if a %}<p id="m">{% endif %}',
+        # Same branch of the same block.
+        '{% if a %}<p id="m"><p id="m">{% endif %}',
+        # Comments do not create branches.
+        '{# {% if a %} #}<p id="m">{# {% else %} #}<p id="m">',
+        '{% comment %}{% else %}{% endcomment %}<p id="m"><p id="m">',
+    ],
+)
+def test_duplicate_id_violations(lint, source):
+    assert [code for code, _ in lint(source, "RL303")] == ["RL303"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<p id="a"></p><p id="b"></p>',
+        '<p id="A"></p><p id="a"></p>',
+        '<p id=""></p><p id=""></p>',
+        '<p id="{{ field.auto_id }}"></p><p id="{{ field.auto_id }}"></p>',
+        '<p id="row-{{ forloop.counter }}"></p><p id="row-{{ forloop.counter }}"></p>',
+        '{% if x %}<input id="email">{% else %}<input id="email" disabled>{% endif %}',
+        '{% if a %}<p id="m">{% elif b %}<p id="m">{% else %}<p id="m">{% endif %}',
+        '{% for i in items %}<p id="e">{% empty %}<p id="e">{% endfor %}',
+        '{% for i in items %}<p id="e">{% else %}<p id="e">{% endfor %}',  # Jinja2
+        '{% if a %}{% if b %}<p id="m">{% else %}<p id="m">{% endif %}{% endif %}',
+        '{%- if a -%}<p id="j">{%- else -%}<p id="j">{%- endif %}',
+        '<template><p id="t"></p></template><p id="t"></p>',
+    ],
+)
+def test_duplicate_id_ok(lint, source):
+    assert lint(source, "RL303") == []
+
+
+# --------------------------------------------------------------------------
 # RL401 form-label
 # --------------------------------------------------------------------------
 
