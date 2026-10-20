@@ -6,11 +6,11 @@ so the tree never fails on unbalanced tags - it just does its best.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
-from ramplint.template import MARKUP, PLACEHOLDERS, TEXT  # noqa: F401
+from ramplint.template import MARKUP, PLACEHOLDERS, TEXT, BranchPath  # noqa: F401
 
 # fmt: off
 VOID_ELEMENTS = frozenset(
@@ -51,6 +51,8 @@ class Node:
     #: True when attributes are generated at render time, e.g.
     #: ``<input {{ widget.attrs }}>`` - we cannot know what they contain.
     dynamic_attrs: bool = False
+    #: Which ``{% if %}`` / ``{% for %}`` branch the element is rendered in.
+    branch: BranchPath = ()
 
     def get(self, name: str, default: str | None = None) -> str | None:
         return self.attrs.get(name, default)
@@ -100,8 +102,9 @@ class Node:
 
 
 class _TreeBuilder(HTMLParser):
-    def __init__(self) -> None:
+    def __init__(self, branch_of: Callable[[int, int], BranchPath] | None = None) -> None:
         super().__init__(convert_charrefs=True)
+        self.branch_of = branch_of
         self.root = Node(tag="#document", attrs={}, line=1, col=1)
         self.stack: list[Node] = [self.root]
 
@@ -109,6 +112,8 @@ class _TreeBuilder(HTMLParser):
     def _make_node(self, tag: str, attrs: list[tuple[str, str | None]]) -> Node:
         line, offset = self.getpos()
         node = Node(tag=tag, attrs={}, line=line, col=offset + 1)
+        if self.branch_of is not None:
+            node.branch = self.branch_of(line, offset + 1)
         for name, value in attrs:
             if any(p in name for p in PLACEHOLDERS):
                 node.dynamic_attrs = True
@@ -142,8 +147,9 @@ class _TreeBuilder(HTMLParser):
         self.stack[-1].children.append(data)
 
 
-def parse(html: str) -> Node:
-    builder = _TreeBuilder()
+def parse(html: str, branch_of: Callable[[int, int], BranchPath] | None = None) -> Node:
+    """Parse prepared HTML; ``branch_of`` tags each element with its template branch."""
+    builder = _TreeBuilder(branch_of)
     builder.feed(html)
     builder.close()
     return builder.root

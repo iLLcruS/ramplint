@@ -30,6 +30,13 @@
   <input type="submit" value="{% trans 'Save' %}">
 </form>
 
+{# The same id in {% if %} / {% else %} branches - only one is ever rendered. #}
+{% if user.is_authenticated %}
+  <p id="greeting">{% trans "Welcome back" %}</p>
+{% else %}
+  <p id="greeting">{% trans "Hello, guest" %}</p>
+{% endif %}
+
 {# Text, translations and includes all count as accessible names. #}
 <button type="button">{{ button_label }}</button>
 <button type="button" aria-label="{% trans 'Close' %}"><i class="icon-x" aria-hidden="true"></i></button>

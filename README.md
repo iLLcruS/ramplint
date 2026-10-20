@@ -45,7 +45,7 @@ examples/templates/accounts/login.html:9:3: RL401 <input type="text"> has no ass
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 27 problems in 6 of 8 files.
+Found 28 problems in 6 of 8 files.
 ```
 
 See [`examples/README.md`](examples/README.md) for what each demo template contains.
@@ -94,6 +94,7 @@ Files passed explicitly are always checked, whatever their extension.
 | `RL201` | `table-header`  | Data tables use real `<th>` header cells                                                 | 1.3.1 (A)        |
 | `RL301` | `heading-order` | Heading levels do not skip (`<h2>` → `<h4>`)                                             | 1.3.1 (A)        |
 | `RL302` | `empty-heading` | Headings are not empty                                                                   | 2.4.6 (AA)       |
+| `RL303` | `duplicate-id`  | `id` values are unique (same id in `{% if %}` / `{% else %}` branches is allowed)        | 1.3.1 (A)        |
 | `RL401` | `form-label`    | `<input>`, `<select>` and `<textarea>` have an associated `<label>`                      | 1.3.1, 4.1.2 (A) |
 | `RL501` | `button-name`   | Buttons (including icon-only buttons) have an accessible name                            | 4.1.2 (A)        |
 | `RL502` | `link-name`     | Links have an accessible name                                                            | 2.4.4, 4.1.2 (A) |
@@ -148,6 +149,17 @@ The first heading in a file sets the baseline. A child template that starts at
 {# ✗ #} <h2><i class="icon-star"></i></h2>
 {# ✓ #} <h2>{% trans "Favourites" %}</h2>
 ```
+
+#### RL303 `duplicate-id`
+
+```django
+{# ✗ #} <p id="help">…</p> … <p id="help">…</p>
+{# ✓ #} {% if user.is_authenticated %}<p id="greeting">…</p>{% else %}<p id="greeting">…</p>{% endif %}
+```
+
+ramplint knows which `{% if %}` / `{% elif %}` / `{% else %}` (and `{% for %}` /
+`{% empty %}`) branch an element is in, so the same id in mutually exclusive
+branches is not reported. Ids built from variables are skipped.
 
 #### RL401 `form-label`
 

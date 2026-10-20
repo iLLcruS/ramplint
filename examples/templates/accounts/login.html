@@ -3,6 +3,7 @@
 
 {% block content %}
 <h1>{% trans "Sign in" %}</h1>
+<p id="login-help">{% trans "Use your work email to sign in." %}</p>
 
 <form method="post" class="login-form">
   {% csrf_token %}
@@ -17,4 +18,5 @@
   <input type="button" class="show-password">
   <button type="submit"><i class="icon icon-arrow-right"></i></button>
 </form>
+<p id="login-help"><a href="{% url 'accounts:reset' %}">{% trans "Forgot your password?" %}</a></p>
 {% endblock %}
