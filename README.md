@@ -45,7 +45,7 @@ examples/templates/accounts/login.html:9:3: RL401 <input type="text"> has no ass
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 28 problems in 6 of 8 files.
+Found 29 problems in 6 of 8 files.
 ```
 
 See [`examples/README.md`](examples/README.md) for what each demo template contains.
@@ -98,6 +98,7 @@ Files passed explicitly are always checked, whatever their extension.
 | `RL401` | `form-label`    | `<input>`, `<select>` and `<textarea>` have an associated `<label>`                      | 1.3.1, 4.1.2 (A) |
 | `RL501` | `button-name`   | Buttons (including icon-only buttons) have an accessible name                            | 4.1.2 (A)        |
 | `RL502` | `link-name`     | Links have an accessible name                                                            | 2.4.4, 4.1.2 (A) |
+| `RL503` | `no-positive-tabindex` | `tabindex` is not greater than `0`                                                | 2.4.3 (A)        |
 | `RL601` | `html-lang`     | `<html>` declares the page language                                                      | 3.1.1 (A)        |
 
 <details>
@@ -188,6 +189,17 @@ widgets whose attributes are rendered dynamically (`<input {{ widget.attrs }}>`)
 {# ✓ #} <a href="{% url 'cart' %}"><svg><title>Cart</title>…</svg></a>
 {# ✓ #} <a href="/"><img src="logo.png" alt="ACME home"></a>
 ```
+
+#### RL503 `no-positive-tabindex`
+
+```django
+{# ✗ #} <a href="{% url 'search' %}" tabindex="1">Search</a>
+{# ✓ #} <div role="button" tabindex="0">Menu</div>
+{# ✓ #} <div id="dialog" tabindex="-1">…</div>
+```
+
+A positive `tabindex` moves the element to the front of the keyboard focus
+order, ahead of everything else on the page. Reorder the markup instead.
 
 #### RL601 `html-lang`
 

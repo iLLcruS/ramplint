@@ -43,6 +43,11 @@
 <a href="{% url 'help' %}">{% include "icons/help.html" %}</a>
 <a href="{{ product.get_absolute_url }}"><img src="{{ product.thumb.url }}" alt="{{ product.name }}"></a>
 
+{# tabindex 0 and -1 keep the natural focus order; dynamic values are skipped. #}
+<div role="button" tabindex="0">{% trans "Menu" %}</div>
+<div id="dialog" tabindex="-1">{{ dialog_content }}</div>
+<a href="{% url 'cart' %}" tabindex="{{ cart_tabindex }}">{% trans "Cart" %}</a>
+
 {# Frames: title from a variable, and a hidden tracking frame. #}
 <iframe src="{{ video.embed_url }}" title="{{ video.title }}"></iframe>
 <iframe src="https://example.com/pixel" aria-hidden="true" tabindex="-1"></iframe>
