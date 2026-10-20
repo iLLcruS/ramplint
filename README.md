@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://github.com/iLLcruS/ramplint/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/iLLcruS/ramplint/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://pypi.org/project/ramplint/"><img alt="PyPI" src="https://img.shields.io/pypi/v/ramplint.svg"></a>
-  <img alt="Python 3.9+" src="https://img.shields.io/badge/python-3.9%2B-blue.svg">
+  <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
 </p>
 
