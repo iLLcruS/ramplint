@@ -10,6 +10,7 @@
   <a href="https://pypi.org/project/ramplint/"><img alt="PyPI" src="https://img.shields.io/pypi/v/ramplint.svg"></a>
   <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
+  <a href="https://ko-fi.com/innerexcept"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-support-72a4f2?logo=ko-fi&logoColor=white"></a>
 </p>
 
 ---
@@ -266,6 +267,17 @@ tool such as axe.
 Bug reports, especially about false positives, are very welcome.
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Feedback and support
+
+Questions, ideas, or using ramplint in your project? Open an
+[issue](https://github.com/iLLcruS/ramplint/issues) or email me at
+[rostovskii.1020@gmail.com](mailto:rostovskii.1020@gmail.com).
+
+ramplint is free and built in my spare time. If it saved you time, you can
+buy me a coffee:
+
+<a href="https://ko-fi.com/innerexcept"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" height="36"></a>
+
 ## License
 
-[MIT](LICENSE) © Vladyslav Rostovskii
+[MIT](LICENSE) © Vladyslav Rostovskyi
