@@ -8,7 +8,7 @@
 
   <form method="post" action="{% url 'newsletter:subscribe' %}">
     {% csrf_token %}
-    <input type="email" name="email" placeholder="{% trans 'Your email' %}">
+    <input type="email" name="email" autocomplete="emial" placeholder="{% trans 'Your email' %}">
     <button type="submit">{% trans "Subscribe" %}</button>
   </form>
 </footer>

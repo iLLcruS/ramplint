@@ -46,7 +46,7 @@ examples/templates/accounts/login.html:10:3: RL401 <input type="text"> has no as
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 31 problems in 6 of 8 files.
+Found 32 problems in 6 of 8 files.
 ```
 
 See [`examples/README.md`](examples/README.md) for what each demo template contains.
@@ -97,6 +97,7 @@ Files passed explicitly are always checked, whatever their extension.
 | `RL302` | `empty-heading` | Headings are not empty                                                                   | 2.4.6 (AA)       |
 | `RL303` | `duplicate-id`  | `id` values are unique (same id in `{% if %}` / `{% else %}` branches is allowed)        | 1.3.1 (A)        |
 | `RL401` | `form-label`    | `<input>`, `<select>` and `<textarea>` have an associated `<label>`                      | 1.3.1, 4.1.2 (A) |
+| `RL402` | `autocomplete-valid` | `autocomplete` uses valid autofill tokens (catches typos like `emial`)              | 1.3.5 (AA)       |
 | `RL501` | `button-name`   | Buttons (including icon-only buttons) have an accessible name                            | 4.1.2 (A)        |
 | `RL502` | `link-name`     | Links have an accessible name                                                            | 2.4.4, 4.1.2 (A) |
 | `RL503` | `no-positive-tabindex` | `tabindex` is not greater than `0`                                                | 2.4.3 (A)        |
@@ -176,6 +177,19 @@ branches is not reported. Ids built from variables are skipped.
 
 Hidden, submit, reset, button and image inputs are not checked. Neither are
 widgets whose attributes are rendered dynamically (`<input {{ widget.attrs }}>`).
+
+#### RL402 `autocomplete-valid`
+
+```django
+{# ✗ #} <input type="email" name="email" autocomplete="emial" aria-label="Email">
+{# ✗ #} <input name="phone" autocomplete="mobile street-address" aria-label="Phone">
+{# ✓ #} <input name="email" autocomplete="email" aria-label="Email">
+{# ✓ #} <input name="ship" autocomplete="section-gift shipping street-address" aria-label="Address">
+```
+
+A typo in `autocomplete` silently breaks autofill and password managers.
+ramplint validates the full token grammar from the HTML spec and suggests the
+closest valid token.
 
 #### RL501 `button-name`
 

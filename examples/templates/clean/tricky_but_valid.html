@@ -29,6 +29,18 @@
   {# Attributes rendered by the widget itself. #}
   <input {{ widget.attrs }}>
 
+  {# Valid autofill tokens, including sections and dynamic values. #}
+  <label for="ship">{% trans "Address" %}</label>
+  <input id="ship" name="ship" autocomplete="section-gift shipping street-address">
+  <label for="work-email">{% trans "Work email" %}</label>
+  <input id="work-email" name="work_email" autocomplete="work email">
+  <label for="pwd">{% trans "New password" %}</label>
+  <input id="pwd" type="password" name="pwd" autocomplete="new-password">
+  <label for="promo">{% trans "Promo code" %}</label>
+  <input id="promo" name="promo" autocomplete="off">
+  <label for="city">{% trans "City" %}</label>
+  <input id="city" name="city" autocomplete="{{ field.autocomplete }}">
+
   {# Wrapped label, hidden and submit inputs. #}
   <label>{% trans "Remember me" %} <input type="checkbox" name="remember"></label>
   <input type="hidden" name="next" value="{{ next }}">

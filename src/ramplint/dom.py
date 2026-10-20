@@ -6,6 +6,7 @@ so the tree never fails on unbalanced tags - it just does its best.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
@@ -53,6 +54,9 @@ class Node:
     dynamic_attrs: bool = False
     #: Which ``{% if %}`` / ``{% for %}`` branch the element is rendered in.
     branch: BranchPath = ()
+    #: Attributes whose value in the template source contains ``{{ }}`` or
+    #: ``{% %}``, e.g. ``class="{% if active %}on{% endif %}"``.
+    templated_attrs: frozenset[str] = frozenset()
 
     def get(self, name: str, default: str | None = None) -> str | None:
         return self.attrs.get(name, default)
@@ -63,8 +67,11 @@ class Node:
         return value is not None and value.strip() != ""
 
     def is_dynamic(self, name: str) -> bool:
+        """The attribute value is (partly) computed by the template engine."""
         value = self.attrs.get(name)
-        return value is not None and any(p in value for p in PLACEHOLDERS)
+        if value is None:
+            return False
+        return name in self.templated_attrs or any(p in value for p in PLACEHOLDERS)
 
     def iter(self, *tags: str) -> Iterator[Node]:
         """Depth-first iteration over descendants (not including self)."""
@@ -101,10 +108,30 @@ class Node:
         return f"<{self.tag} at {self.line}:{self.col}>"
 
 
+# name="value" / name='value' inside a raw start tag.
+_RAW_ATTR_RE = re.compile(r"""([^\s"'=<>/`]+)\s*=\s*("[^"]*"|'[^']*')""")
+
+
+def _templated_attributes(raw_start_tag: str) -> frozenset[str]:
+    return frozenset(
+        name.lower()
+        for name, value in _RAW_ATTR_RE.findall(raw_start_tag)
+        if "{%" in value or "{{" in value
+    )
+
+
 class _TreeBuilder(HTMLParser):
-    def __init__(self, branch_of: Callable[[int, int], BranchPath] | None = None) -> None:
+    def __init__(
+        self,
+        branch_of: Callable[[int, int], BranchPath] | None = None,
+        source: str | None = None,
+    ) -> None:
         super().__init__(convert_charrefs=True)
         self.branch_of = branch_of
+        self.source = source
+        self.line_starts = [0]
+        if source is not None:
+            self.line_starts += [i + 1 for i, char in enumerate(source) if char == "\n"]
         self.root = Node(tag="#document", attrs={}, line=1, col=1)
         self.stack: list[Node] = [self.root]
 
@@ -114,6 +141,10 @@ class _TreeBuilder(HTMLParser):
         node = Node(tag=tag, attrs={}, line=line, col=offset + 1)
         if self.branch_of is not None:
             node.branch = self.branch_of(line, offset + 1)
+        raw_html = self.get_starttag_text()
+        if self.source is not None and raw_html and line <= len(self.line_starts):
+            start = self.line_starts[line - 1] + offset
+            node.templated_attrs = _templated_attributes(self.source[start : start + len(raw_html)])
         for name, value in attrs:
             if any(p in name for p in PLACEHOLDERS):
                 node.dynamic_attrs = True
@@ -147,9 +178,18 @@ class _TreeBuilder(HTMLParser):
         self.stack[-1].children.append(data)
 
 
-def parse(html: str, branch_of: Callable[[int, int], BranchPath] | None = None) -> Node:
-    """Parse prepared HTML; ``branch_of`` tags each element with its template branch."""
-    builder = _TreeBuilder(branch_of)
+def parse(
+    html: str,
+    branch_of: Callable[[int, int], BranchPath] | None = None,
+    source: str | None = None,
+) -> Node:
+    """Parse prepared HTML.
+
+    ``branch_of`` tags each element with its template branch; ``source`` (the
+    original template, same geometry as ``html``) lets the parser tell which
+    attribute values are built by template tags.
+    """
+    builder = _TreeBuilder(branch_of, source)
     builder.feed(html)
     builder.close()
     return builder.root
