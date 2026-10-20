@@ -484,3 +484,44 @@ def test_viewport_zoom_reports_both_problems_once(lint):
     [violation] = lint_source(source, rules=select_rules(["RL602"]))
     assert "user-scalable=no" in violation.message
     assert "maximum-scale=1" in violation.message
+
+
+# --------------------------------------------------------------------------
+# RL504 anchor-is-valid
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<a href="#">Menu</a>',
+        '<a href="  #  " onclick="go()">Menu</a>',
+        '<a href="javascript:void(0)">Chat</a>',
+        '<a href="JavaScript: openChat()">Chat</a>',
+        '<a onclick="openMenu()">Menu</a>',
+        '<a onClick="openMenu()" class="btn">Menu</a>',
+        '<a onkeydown="handle(event)" tabindex="0">Menu</a>',
+    ],
+)
+def test_anchor_is_valid_violations(lint, source):
+    assert lint(source, "RL504") == [("RL504", 1)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<a href="/orders/">Orders</a>',
+        '<a href="#reviews">Reviews</a>',
+        "<a href=\"{% url 'home' %}\">Home</a>",
+        '<a href="{{ next_url }}">Continue</a>',
+        '<a href="{{ base }}#">Weird but dynamic</a>',
+        '<a href="mailto:hi@example.com">Email</a>',
+        '<a name="top"></a>',
+        '<a id="section-1"></a>',
+        '<a class="placeholder">Not a link yet</a>',
+        '<a {{ link_attrs }} onclick="go()">Dynamic</a>',
+        '<button type="button" onclick="go()">Go</button>',
+    ],
+)
+def test_anchor_is_valid_ok(lint, source):
+    assert lint(source, "RL504") == []
