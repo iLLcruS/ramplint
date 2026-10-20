@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 
 from ramplint.dom import Node
@@ -56,4 +57,28 @@ def link_name(root: Node) -> Iterator[tuple[Node, str]]:
                 "<a> link has no accessible name; add text, an aria-label, or alt "
                 "text on the image inside it"
             ),
+        )
+
+
+_TABINDEX_RE = re.compile(r"^\s*\+?(\d+)\s*$")
+
+
+@rule(
+    code="RL503",
+    name="no-positive-tabindex",
+    summary="tabindex must not be greater than 0.",
+    wcag="2.4.3 Focus Order (A)",
+)
+def no_positive_tabindex(root: Node) -> Iterator[tuple[Node, str]]:
+    for node in root.iter():
+        value = node.get("tabindex")
+        if value is None or node.is_dynamic("tabindex"):
+            continue
+        match = _TABINDEX_RE.match(value)
+        if not match or int(match.group(1)) == 0:
+            continue
+        yield (
+            node,
+            f'tabindex="{value.strip()}" overrides the natural focus order; use '
+            'tabindex="0" to make the element focusable, or reorder the markup',
         )

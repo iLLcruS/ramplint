@@ -3,6 +3,7 @@
   <ul>
     <li><a href="{% url 'catalog:index' %}">{% trans "Catalog" %}</a></li>
     <li><a href="{% url 'orders:list' %}">{% trans "Orders" %}</a></li>
+    <li><a href="{% url 'search' %}" tabindex="1">{% trans "Search" %}</a></li>
     <li><a href="{% url 'cart:detail' %}"><i class="icon icon-cart"></i></a></li>
     <li><a href="{% url 'accounts:profile' %}"><img src="{{ user.avatar.url }}" alt=""></a></li>
   </ul>
