@@ -44,3 +44,17 @@ def test_readme_sample_output_matches_real_output(capsys, monkeypatch):
     assert sample, "README sample output not found"
     for line in sample:
         assert line in real_output, f"README sample line is out of date:\n{line}"
+
+
+def test_changelog_has_section_for_current_version():
+    from ramplint import __version__
+
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert f"## [{__version__}] - " in changelog, "add a CHANGELOG section before releasing"
+    assert f"[{__version__}]: https://github.com/" in changelog
+
+
+def test_readme_pre_commit_rev_matches_version():
+    from ramplint import __version__
+
+    assert f"rev: {__version__}\n" in README

@@ -6,6 +6,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-21
+
 ### Added
 
 - `RL102` iframe-title: `<iframe>` and `<frame>` elements must have a title (#1).
@@ -18,6 +20,14 @@ and the project uses [Semantic Versioning](https://semver.org/).
   click handler but no `href` are reported; use `<button>` for actions (#5).
 - `RL402` autocomplete-valid: `autocomplete` values are checked against the HTML
   autofill grammar, with "did you mean" suggestions for typos (#6).
+
+### Changed
+
+- ramplint now knows which `{% if %}` / `{% else %}` / `{% for %}` / `{% empty %}`
+  branch an element is rendered in.
+- Attribute values built with template tags (for example
+  `class="{% if active %}on{% endif %}"`) are treated as dynamic by every rule.
+- README examples and sample output are verified by the test suite.
 
 ## [0.1.0] - 2026-10-20
 
@@ -34,5 +44,6 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Configuration via `[tool.ramplint]` in `pyproject.toml`.
 - pre-commit hook.
 
-[Unreleased]: https://github.com/iLLcruS/ramplint/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/iLLcruS/ramplint/releases/tag/v0.1.0
+[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/iLLcruS/ramplint/compare/0.1.0...0.2.0
+[0.1.0]: https://github.com/iLLcruS/ramplint/releases/tag/0.1.0

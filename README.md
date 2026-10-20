@@ -297,7 +297,7 @@ extensions = [".html", ".txt"]
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/iLLcruS/ramplint
-    rev: v0.1.0
+    rev: 0.2.0
     hooks:
       - id: ramplint
 ```
