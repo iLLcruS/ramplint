@@ -1,0 +1,19 @@
+{# A standalone landing page made by the marketing team, outside base.html. #}
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="english">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="15; url={% url 'catalog:sale' %}">
+  <link rel="stylesheet" href="{% static 'css/promo.css' %}">
+</head>
+<body>
+  <main>
+    <marquee class="ticker">{% trans "Black Friday: up to 70% off everything!" %}</marquee>
+    <h1>{% trans "Black Friday" %}</h1>
+    <p>{% trans "You will be taken to the sale in a few seconds." %}</p>
+    <a href="{% url 'catalog:sale' %}">{% trans "Go to the sale now" %}</a>
+  </main>
+</body>
+</html>

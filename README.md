@@ -46,7 +46,7 @@ examples/templates/accounts/login.html:10:3: RL401 <input type="text"> has no as
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 43 problems in 9 of 11 files.
+Found 47 problems in 10 of 12 files.
 ```
 
 See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/examples/README.md) for what each demo template contains.
@@ -136,13 +136,17 @@ $ ramplint examples/ --statistics
 1  RL505  nested-interactive
 1  RL601  html-lang
 1  RL602  viewport-zoom
+1  RL603  document-title
+1  RL604  valid-lang
+1  RL605  meta-refresh
+1  RL606  obsolete-elements
 1  RL701  aria-role
 1  RL702  aria-valid-attr
 1  RL703  aria-valid-attr-value
 1  RL704  aria-required-attr
 1  RL705  aria-hidden-focus
 
-Found 43 problems in 9 of 11 files.
+Found 47 problems in 10 of 12 files.
 ```
 
 It works with `--format text` (default) and `--format json`.
@@ -177,6 +181,10 @@ It works with `--format text` (default) and `--format json`.
 | [`RL505`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL505.md) | `nested-interactive` | No buttons, links or other controls inside `<a href>` or `<button>` | 4.1.2 (A) |
 | [`RL601`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL601.md) | `html-lang`     | `<html>` declares the page language                                                      | 3.1.1 (A)        |
 | [`RL602`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL602.md) | `viewport-zoom` | `<meta name="viewport">` does not disable zoom (`user-scalable=no`, `maximum-scale` < 2) | 1.4.4 (AA)       |
+| [`RL603`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL603.md) | `document-title` | Full-page templates have a non-empty `<title>` | 2.4.2 (A) |
+| [`RL604`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL604.md) | `valid-lang` | `lang` / `xml:lang` are valid language tags (catches `english`, `ua`, `en_US`) | 3.1.1 (A), 3.1.2 (AA) |
+| [`RL605`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL605.md) | `meta-refresh` | No timed reloads or redirects with `<meta http-equiv="refresh">` | 2.2.1 (A) |
+| [`RL606`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL606.md) | `obsolete-elements` | No `<marquee>` or `<blink>` | 2.2.2 (A) |
 | [`RL701`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL701.md) | `aria-role` | `role` is a real, non-abstract WAI-ARIA role (catches typos like `dailog`) | 4.1.2 (A) |
 | [`RL702`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL702.md) | `aria-valid-attr` | `aria-*` attributes exist (catches `aria-lable`, `aria-labeledby`) | 4.1.2 (A) |
 | [`RL703`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL703.md) | `aria-valid-attr-value` | ARIA values match their type (`aria-hidden="yes"`, missing `aria-labelledby` ids) | 4.1.2 (A) |
@@ -386,6 +394,42 @@ button) differently, and the inner one is often unreachable by keyboard.
 ```
 
 Low-vision users rely on pinch-to-zoom; WCAG requires text to be resizable up to 200%.
+
+#### RL603 `document-title`
+
+```django
+{# ✗ #} <html lang="en"><head><meta charset="utf-8"></head><body><main>…</main></body></html>
+{# ✓ #} <html lang="en"><head><title>{% block title %}Shoply{% endblock %}</title></head><body><main>…</main></body></html>
+```
+
+Only full-page templates (with `<html>`) are checked. A `{% block %}` or
+`{% include %}` in `<head>` that may render the title is accepted.
+
+#### RL604 `valid-lang`
+
+```django
+{# ✗ #} <p lang="ua">Привіт</p>
+{# ✗ #} <p lang="en_US">Color</p>
+{# ✓ #} <p lang="uk">Привіт</p>
+{# ✓ #} <p lang="en-US">Color</p>
+```
+
+Country codes and language names get a suggestion: `ua` → `uk`, `cz` → `cs`,
+`english` → `en`.
+
+#### RL605 `meta-refresh`
+
+```django
+{# ✗ #} <meta http-equiv="refresh" content="5; url={% url 'home' %}">
+{# ✓ #} <meta http-equiv="refresh" content="0; url={% url 'home' %}">
+```
+
+#### RL606 `obsolete-elements`
+
+```django
+{# ✗ #} <marquee>{% trans "Free shipping!" %}</marquee>
+{# ✓ #} <p class="banner">{% trans "Free shipping!" %}</p>
+```
 
 #### RL701–RL705: ARIA
 

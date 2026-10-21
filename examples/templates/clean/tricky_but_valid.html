@@ -5,8 +5,9 @@
 {# that ramplint understands instead of flagging them as false positives.  #}
 
 {% block extra_head %}
-{# A viewport that allows zooming. #}
+{# A viewport that allows zooming, and an immediate redirect. #}
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="0; url={% url 'home' %}">
 {% endblock %}
 
 {% block content %}
@@ -100,6 +101,12 @@
 {# A card with a link and a separate button; an <a> without href is not a control. #}
 <div class="card"><h3><a href="{{ product.get_absolute_url }}">{{ product.name }}</a></h3><button type="button">{% trans "Add to cart" %}</button></div>
 <a class="drag-handle"><button type="button">{% trans "Move" %}</button></a>
+
+{# Language of parts: valid tags and the language from a variable. #}
+<p lang="uk">{{ product.name_uk }}</p>
+<p lang="zh-Hant">{{ product.name_zh }}</p>
+<span lang="{{ review.language }}">{{ review.text }}</span>
+<div class="marquee">{{ news_ticker }}</div>
 
 {# Frames: title from a variable, and a hidden tracking frame. #}
 <iframe src="{{ video.embed_url }}" title="{{ video.title }}"></iframe>

@@ -28,8 +28,16 @@ and the project uses [Semantic Versioning](https://semver.org/).
     of a table with row and column headers is allowed (#47).
   - `RL306` landmark-one-main: more than one `<main>` / `role="main"`, and
     full-page templates without one (#48).
-- Demo templates for the new rules: `catalog/category.html` and a standalone
-  `errors/500.html`.
+- Document rules:
+  - `RL603` document-title: full-page templates without a `<title>`, and empty
+    titles (#49).
+  - `RL604` valid-lang: `lang` / `xml:lang` values that are not BCP 47 language
+    tags, with suggestions for country codes and language names (`ua` → `uk`,
+    `english` → `en`), and `lang` / `xml:lang` with different languages (#50).
+  - `RL605` meta-refresh: `<meta http-equiv="refresh">` with a delay (#51).
+  - `RL606` obsolete-elements: `<marquee>` and `<blink>` (#52).
+- Demo templates for the new rules: `catalog/category.html`, a standalone
+  `errors/500.html` and a landing page `promo/black_friday.html`.
 
 ## [0.3.1] - 2026-10-21
 
