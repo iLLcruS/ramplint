@@ -53,8 +53,9 @@ See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/example
 
 ## Highlights
 
+- **35 rules.** Images, tables, lists, landmarks, forms, controls, page language and WAI-ARIA, each with a documentation page.
 - **Template-aware.** Django and Jinja2 tags, variables and comments are understood, not stripped blindly.
-- **Low noise.** If something is only known at render time (`{% include %}`, `{{ widget.attrs }}`, `{% block %}`), ramplint assumes the best and stays quiet.
+- **Low noise.** If something is only known at render time (`{% include %}`, `{{ form.email }}`, `{{ widget.attrs }}`, `{% block %}`), ramplint assumes the best and stays quiet.
 - **Zero dependencies.** Pure Python standard library (plus `tomli` on Python < 3.11).
 - **Made for CI.** Exit codes, JSON output, GitHub Actions annotations and a pre-commit hook.
 - **Fast.** No browser and no rendering. A whole project is checked in well under a second.
@@ -553,7 +554,7 @@ extensions = [".html", ".txt"]
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/iLLcruS/ramplint
-    rev: 0.3.1
+    rev: 0.4.0
     hooks:
       - id: ramplint
 ```
@@ -618,11 +619,12 @@ tool such as axe.
 
 ## Roadmap
 
-- [ ] More rules: `<iframe title>`, duplicate `id`s, `autocomplete` on personal-data inputs
-- [ ] `aria-*` attribute and role validation
+- [x] 35 rules for images, tables, structure, forms, controls, the document and WAI-ARIA
+- [x] HTML report and SARIF output for GitHub Code Scanning
 - [ ] `--fix` for safe autofixes (e.g. `scope="col"` on header rows)
-- [ ] SARIF output for GitHub code scanning
-- [ ] Follow `{% extends %}` / `{% include %}` to check heading order across templates
+- [ ] Follow `{% extends %}` / `{% include %}` to check heading order, ids and labels across templates
+- [ ] Jinja2 macros
+- [ ] VS Code extension
 
 ## Contributing
 
