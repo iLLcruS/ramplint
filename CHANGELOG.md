@@ -10,6 +10,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 - `-o` / `--output FILE` writes the report to a file and prints a one-line
   summary (#8).
+- `--format html`: a self-contained HTML report with a summary, problems by
+  rule and problems grouped by template; light and dark themes (#9).
 
 ### Changed
 

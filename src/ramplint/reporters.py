@@ -123,3 +123,7 @@ def report_github(
             f"{_escape_github(v.message)}\n"
         )
     report_text(violations, files_checked, out, color=False)
+
+
+# Formats that live in their own module register themselves on import.
+from ramplint import html_report  # noqa: E402, F401
