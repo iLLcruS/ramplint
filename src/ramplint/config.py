@@ -22,10 +22,14 @@ class Config:
     ignore: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
     extensions: list[str] = field(default_factory=list)
+    #: Find Django projects and their template folders.
+    django: bool = True
+    django_settings: str | None = None
+    template_dirs: list[str] = field(default_factory=list)
     source: Path | None = None
 
 
-_LIST_KEYS = ("select", "ignore", "exclude", "extensions")
+_LIST_KEYS = ("select", "ignore", "exclude", "extensions", "template-dirs")
 
 
 def find_pyproject(start: Path) -> Path | None:
@@ -53,9 +57,18 @@ def load_config(path: Path | None = None, start: Path | None = None) -> Config:
     config = Config(source=path)
     for key, value in section.items():
         normalized = key.replace("_", "-")
-        if normalized not in _LIST_KEYS:
+        if normalized == "django":
+            if not isinstance(value, bool):
+                raise ConfigError(f"{path}: [tool.ramplint].{key} must be true or false")
+            config.django = value
+        elif normalized == "django-settings":
+            if not isinstance(value, str) or not value.strip():
+                raise ConfigError(f"{path}: [tool.ramplint].{key} must be a module name")
+            config.django_settings = value.strip()
+        elif normalized in _LIST_KEYS:
+            if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+                raise ConfigError(f"{path}: [tool.ramplint].{key} must be a list of strings")
+            setattr(config, normalized.replace("-", "_"), list(value))
+        else:
             raise ConfigError(f"{path}: unknown option [tool.ramplint].{key}")
-        if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
-            raise ConfigError(f"{path}: [tool.ramplint].{key} must be a list of strings")
-        setattr(config, normalized, list(value))
     return config

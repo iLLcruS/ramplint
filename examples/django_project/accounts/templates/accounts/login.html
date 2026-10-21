@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Log in" %} | Shoply{% endblock %}
+{% block heading %}{% trans "Log in" %}{% endblock %}
+
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+  {# The field is rendered by Django: ramplint cannot see its id and stays quiet. #}
+  <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+  {{ form.username }}
+  <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+  {{ form.password }}
+  <button type="submit">{% trans "Log in" %}</button>
+</form>
+{% endblock %}

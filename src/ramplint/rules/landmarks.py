@@ -36,6 +36,28 @@ def _has_visible_text(node: Node) -> bool:
     return False
 
 
+def _main_inside_parent_main(root: Node) -> Iterator[tuple[Node, str]]:
+    """A <main> in a block that the parent template already wraps in <main>."""
+    context = root.context
+    if context is None or not context.extends_known:
+        return
+    for node in root.iter():
+        if node.inert or not _is_main(node) or "hidden" in node.attrs:
+            continue
+        block = context.template.top_block_at(context.template.offset(node.line, node.col))
+        if block is None:
+            continue
+        found = context.main_around(block.name)
+        if found is None:
+            continue
+        parent, line = found
+        yield (
+            node,
+            f"{parent.path.name} already wraps the {block.name!r} block in <main> (line "
+            f"{line}), so the page gets two main landmarks; use <div> or <section> here",
+        )
+
+
 @rule(
     code="RL306",
     name="landmark-one-main",
@@ -43,6 +65,7 @@ def _has_visible_text(node: Node) -> bool:
     wcag="1.3.1 Info and Relationships (A), 2.4.1 Bypass Blocks (A)",
 )
 def landmark_one_main(root: Node) -> Iterator[tuple[Node, str]]:
+    yield from _main_inside_parent_main(root)
     mains: list[Node] = []
     may_have_main = may_render_markup(root.text())
     for node in root.iter():

@@ -4,7 +4,32 @@ from collections.abc import Iterator
 
 from ramplint.dom import Node
 from ramplint.rules.base import rule
-from ramplint.template import mutually_exclusive
+from ramplint.template import may_render_markup, mutually_exclusive
+
+
+def template_ids(root: Node) -> dict[str, Node | None] | None:
+    """Ids on the rendered page, mapped to their element in this template.
+
+    None when some ids may come from markup that cannot be read: an
+    unresolvable ``{% include %}``, the template this one extends, a rendered
+    form field or a dynamic ``id``.
+    """
+    own: dict[str, Node | None] = {}
+    for node in root.iter():
+        if node.dynamic_attrs or node.is_dynamic("id"):
+            return None
+        element_id = (node.get("id") or "").strip()
+        if element_id:
+            own.setdefault(element_id, node)
+    context = root.context
+    if context is not None:
+        others = context.ids_with_includes()
+        if others is None:
+            return None
+        return {**dict.fromkeys(others), **own}
+    if may_render_markup(root.text()):
+        return None
+    return own
 
 
 def rendered_elements(root: Node) -> Iterator[Node]:

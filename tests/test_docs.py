@@ -77,3 +77,11 @@ def test_readme_statistics_sample_matches_real_output(capsys, monkeypatch):
     real_output = capsys.readouterr().out
     sample = README.split("$ ramplint examples/ --statistics\n", 1)[1].split("```", 1)[0]
     assert sample == real_output
+
+
+def test_readme_list_templates_sample_matches_real_output(capsys, monkeypatch):
+    monkeypatch.chdir(ROOT / "examples" / "django_project")
+    main(["--list-templates"])
+    real_output = capsys.readouterr().out
+    sample = README.split("$ cd examples/django_project && ramplint --list-templates\n", 1)[1]
+    assert sample.split("```", 1)[0] == real_output

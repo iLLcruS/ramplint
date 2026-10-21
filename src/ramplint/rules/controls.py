@@ -215,3 +215,73 @@ def duplicate_accesskey(root: Node) -> Iterator[tuple[Node, str]]:
                 f'accesskey="{value.strip()}" is already used on line {clash.line}; the '
                 "shortcut can only activate one of them. Pick a different key",
             )
+
+
+#: Widget roles that users operate with the keyboard themselves. Options,
+#: tree items and grid cells are left out: their focus is usually managed by
+#: the container with aria-activedescendant.
+_FOCUSABLE_ROLES = frozenset(
+    {
+        "button", "checkbox", "combobox", "link", "menuitem", "menuitemcheckbox",
+        "menuitemradio", "radio", "searchbox", "slider", "spinbutton", "switch",
+        "tab", "textbox",
+    }
+)  # fmt: skip
+_NATIVELY_FOCUSABLE = frozenset({"button", "select", "textarea", "iframe", "summary"})
+
+
+def _natively_focusable(node: Node) -> bool:
+    if node.tag in _NATIVELY_FOCUSABLE:
+        return True
+    if node.tag in ("a", "area"):
+        return node.get("href") is not None
+    if node.tag == "input":
+        return (node.get("type") or "").strip().lower() != "hidden"
+    if node.tag in ("audio", "video"):
+        return "controls" in node.attrs
+    return (node.get("contenteditable") or "true").strip().lower() in ("", "true") and (
+        "contenteditable" in node.attrs
+    )
+
+
+@rule(
+    code="RL507",
+    name="focusable-role",
+    summary="Elements with an interactive role must be focusable.",
+    wcag="2.1.1 Keyboard (A), 4.1.2 Name, Role, Value (A)",
+)
+def focusable_role(root: Node) -> Iterator[tuple[Node, str]]:
+    for node in root.iter():
+        if node.inert or node.dynamic_attrs or node.is_dynamic("role"):
+            continue
+        role = effective_role(node)
+        if role not in _FOCUSABLE_ROLES or "tabindex" in node.attrs:
+            continue
+        if _natively_focusable(node) or "disabled" in node.attrs:
+            continue
+        if node.aria_hidden or any(a.aria_hidden for a in node.ancestors()):
+            continue
+        if (node.get("aria-disabled") or "").strip().lower() == "true":
+            continue
+        if any("aria-activedescendant" in a.attrs for a in node.ancestors()):
+            continue  # focus stays on the container
+        yield (
+            node,
+            f'<{node.tag} role="{role}"> cannot be reached with the keyboard; add '
+            f'tabindex="0" (and key handlers), or use a native '
+            f"{_NATIVE_HINT.get(role, 'element')}",
+        )
+
+
+_NATIVE_HINT = {
+    "button": "<button>",
+    "link": "<a href>",
+    "checkbox": '<input type="checkbox">',
+    "switch": '<input type="checkbox" role="switch">',
+    "radio": '<input type="radio">',
+    "slider": '<input type="range">',
+    "spinbutton": '<input type="number">',
+    "textbox": "<input> or <textarea>",
+    "searchbox": '<input type="search">',
+    "combobox": "<select>",
+}

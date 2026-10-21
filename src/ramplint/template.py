@@ -217,21 +217,66 @@ def _placeholder(marker: str, token: str) -> str:
     return marker + _blank(token[1:])
 
 
+def classify(token: str, child_template: bool = False) -> str | None:
+    """The placeholder a template token becomes, or None if it renders nothing."""
+    if token.startswith("{#"):
+        return None
+    if token.startswith("{{"):
+        return MARKUP if _renders_markup(token) else TEXT
+    name = tag_name(token)
+    if name in SILENT_TAGS:
+        return None
+    if name in TEXT_TAGS:
+        return TEXT
+    if name == "block" and child_template:
+        return CHILD_BLOCK
+    return MARKUP
+
+
+def tag_name(token: str) -> str:
+    """``include`` for ``{% include "a.html" %}``; empty for variables and comments."""
+    match = _TAG_NAME_RE.match(token)
+    return match.group(1) if match else ""
+
+
+@dataclass(frozen=True)
+class Token:
+    offset: int
+    text: str
+    #: Tag name (``include``, ``block``...), empty for variables.
+    name: str
+    #: :data:`TEXT`, :data:`MARKUP`, :data:`CHILD_BLOCK` or None.
+    placeholder: str | None
+
+
+def strip_comments(source: str) -> str:
+    """``source`` with ``{% comment %}`` blocks blanked out (same geometry)."""
+    return _COMMENT_BLOCK_RE.sub(lambda m: _blank(m.group(0)), source)
+
+
+def is_child_template(source: str) -> bool:
+    return _EXTENDS_RE.search(strip_comments(source)) is not None
+
+
+def tokens(source: str) -> list[Token]:
+    """Every template token in ``source`` outside ``{% comment %}`` blocks."""
+    text = strip_comments(source)
+    child = _EXTENDS_RE.search(text) is not None
+    return [
+        Token(
+            offset=m.start(),
+            text=m.group(0),
+            name=tag_name(m.group(0)) if m.group(0).startswith("{%") else "",
+            placeholder=classify(m.group(0), child),
+        )
+        for m in _TOKEN_RE.finditer(text)
+    ]
+
+
 def _replace_token(match: re.Match[str], child_template: bool = False) -> str:
     token = match.group(0)
-    if token.startswith("{#"):
-        return _blank(token)
-    if token.startswith("{{"):
-        return _placeholder(MARKUP if _renders_markup(token) else TEXT, token)
-    name_match = _TAG_NAME_RE.match(token)
-    name = name_match.group(1) if name_match else ""
-    if name in SILENT_TAGS:
-        return _blank(token)
-    if name in TEXT_TAGS:
-        return _placeholder(TEXT, token)
-    if name == "block" and child_template:
-        return _placeholder(CHILD_BLOCK, token)
-    return _placeholder(MARKUP, token)
+    placeholder = classify(token, child_template)
+    return _blank(token) if placeholder is None else _placeholder(placeholder, token)
 
 
 def _parse_suppressions(source: str) -> Suppressions:
@@ -265,7 +310,7 @@ def _parse_suppressions(source: str) -> Suppressions:
 def prepare(source: str) -> PreparedTemplate:
     """Turn template source into parseable HTML of identical geometry."""
     suppressions = _parse_suppressions(source)
-    without_comments = _COMMENT_BLOCK_RE.sub(lambda m: _blank(m.group(0)), source)
+    without_comments = strip_comments(source)
     branches = _build_branch_map(without_comments)
     child_template = _EXTENDS_RE.search(without_comments) is not None
     html = _TOKEN_RE.sub(lambda m: _replace_token(m, child_template), without_comments)

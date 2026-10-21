@@ -321,3 +321,62 @@ def test_duplicate_accesskey_message():
 def test_every_extra_accesskey_is_reported(lint):
     source = '<a accesskey="s">A</a>\n<a accesskey="s">B</a>\n<a accesskey="s">C</a>'
     assert lint(source, "RL506") == [("RL506", 2), ("RL506", 3)]
+
+
+# --------------------------------------------------------------------------
+# RL507 focusable-role
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<div role="switch" aria-checked="false">Dark mode</div>',
+        '<span role="button">Close</span>',
+        '<a role="button">No href</a>',
+        '<div role="checkbox" aria-checked="true">x</div>',
+        '<li role="menuitem">Copy</li>',
+        '<div role="slider" aria-valuenow="3">x</div>',
+        '<div role="textbox">x</div>',
+        '<div role="foo tab">Unknown first role</div>',
+    ],
+)
+def test_focusable_role_violations(lint, source):
+    assert lint(source, "RL507") == [("RL507", 1)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<div role="switch" aria-checked="false" tabindex="0">x</div>',
+        '<span role="tab" tabindex="-1">x</span>',
+        '<span role="button" tabindex="{{ ti }}">x</span>',
+        '<button role="switch" aria-checked="false">x</button>',
+        '<a href="/x" role="button">x</a>',
+        '<input type="checkbox" role="switch">',
+        '<div role="textbox" contenteditable>x</div>',
+        '<div role="textbox" contenteditable="true">x</div>',
+        '<video role="button" controls></video>',
+        '<div role="button" aria-disabled="true">x</div>',
+        '<div role="button" disabled>x</div>',
+        '<div aria-hidden="true"><span role="button">x</span></div>',
+        '<div role="menu" tabindex="0" aria-activedescendant="c">'
+        '<div role="menuitem" id="c">x</div></div>',
+        '<ul role="listbox"><li role="option">x</li></ul>',
+        '<div role="{{ role }}">x</div>',
+        '<div {{ attrs }} role="button">x</div>',
+        '<template><span role="button">x</span></template>',
+        '<div role="region">x</div>',
+    ],
+)
+def test_focusable_role_ok(lint, source):
+    assert lint(source, "RL507") == []
+
+
+def test_focusable_role_message():
+    msg = messages('<div role="switch" aria-checked="false">x</div>', "RL507")[0]
+    assert msg == (
+        '<div role="switch"> cannot be reached with the keyboard; add tabindex="0" (and key '
+        'handlers), or use a native <input type="checkbox" role="switch">'
+    )
+    assert messages('<li role="menuitem">x</li>', "RL507")[0].endswith("a native element")

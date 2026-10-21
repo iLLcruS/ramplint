@@ -6,6 +6,50 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Django project discovery: in a folder with `manage.py`, `ramplint` reads the
+  settings module (from `--settings`, `DJANGO_SETTINGS_MODULE`, `manage.py`,
+  `wsgi.py` / `asgi.py`, or a `settings.py` / `settings/` package) and lints the
+  folders Django loads templates from: `TEMPLATES[...]["DIRS"]` and the
+  `templates/` / `jinja2/` folders of the project's own apps. Settings are read
+  with `ast`, never imported (#65).
+- Supported layouts: `startproject`, settings packages with
+  `from .base import *`, cookiecutter-django, `src/` layouts, apps in a
+  subfolder, Jinja2, and monorepos with several `manage.py`. Without usable
+  settings, template folders next to `apps.py` / `models.py` are used (#66).
+- `--list-templates` (text or JSON) shows the project, the settings module and
+  how it was found, the template folders with their origin, templates that
+  override each other, and settings that could not be read (#67).
+- `--settings`, `--no-django`, `--verbose`, and the `[tool.ramplint]` options
+  `django-settings`, `template-dirs` and `django` (#68).
+- `{% extends %}` and `{% include %}` are resolved to files the way Django's
+  loaders do (#69):
+  - `RL301` heading-order compares a child template's first heading in a block
+    with the heading the parent renders before that block (#70).
+  - `RL603` document-title reports pages whose
+    `<title>{% block title %}{% endblock %}</title>` stays empty (#70).
+  - `RL306` landmark-one-main reports a `<main>` inside a block that the parent
+    already wraps in `<main>` (#70).
+  - `RL403` label-for-target and `RL703` aria-valid-attr-value look for ids in
+    included templates and in the templates a page extends (#71).
+- `RL507` focusable-role: elements with an interactive role that cannot get
+  keyboard focus (#72).
+- `examples/django_project/`: a demo project with a settings package, two
+  apps, a Jinja2 folder and a `static/` folder that is skipped (#73).
+
+### Changed
+
+- `ramplint` without arguments in a Django project lints the template folders
+  from the settings instead of every template under the current folder. Folders
+  passed explicitly are walked as before, but Django projects inside them (a
+  folder with `manage.py`) are linted through their settings.
+- In a child template, headings outside `{% block %}` (which Django never
+  renders) are no longer checked by `RL301`, and headings in different blocks
+  are no longer compared with each other.
+- Without a resolvable parent template, `RL403` and `RL703` no longer check ids
+  in child templates: the id may be in the parent.
+
 ## [0.4.1] - 2026-10-21
 
 ### Fixed

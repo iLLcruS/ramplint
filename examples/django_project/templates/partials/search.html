@@ -1,0 +1,5 @@
+{% load i18n %}
+<form role="search" method="get" action="{% url 'catalog:list' %}">
+  <input type="search" id="search-q" name="q" value="{{ request.GET.q }}" aria-label="{% trans 'Search' %}">
+  <button type="submit">{% trans "Search" %}</button>
+</form>

@@ -26,6 +26,7 @@
 | [RL504](RL504.md) | `anchor-is-valid` | Links must point somewhere; use &lt;button> for actions. |
 | [RL505](RL505.md) | `nested-interactive` | Interactive elements must not contain other interactive elements. |
 | [RL506](RL506.md) | `duplicate-accesskey` | accesskey values must be unique within a template. |
+| [RL507](RL507.md) | `focusable-role` | Elements with an interactive role must be focusable. |
 | [RL601](RL601.md) | `html-lang` | The &lt;html> element must declare the page language. |
 | [RL602](RL602.md) | `viewport-zoom` | The viewport meta tag must not disable zooming. |
 | [RL603](RL603.md) | `document-title` | Pages must have a non-empty &lt;title>. |

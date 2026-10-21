@@ -10,6 +10,7 @@ import re
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
+from typing import Any
 
 from ramplint.template import MARKUP, PLACEHOLDERS, TEXT, BranchPath  # noqa: F401
 
@@ -57,6 +58,18 @@ class Node:
     #: Attributes whose value in the template source contains ``{{ }}`` or
     #: ``{% %}``, e.g. ``class="{% if active %}on{% endif %}"``.
     templated_attrs: frozenset[str] = frozenset()
+    #: Position of the end tag (``(line, col)``), when the element is closed
+    #: explicitly. Elements closed implicitly share the end of their parent.
+    end: tuple[int, int] | None = None
+    #: Cross-template information for the template being linted, set on the
+    #: root node only (see :mod:`ramplint.project.context`).
+    context: Any = None
+
+    def contains(self, line: int, col: int) -> bool:
+        """``(line, col)`` lies between this element's start and end tags."""
+        if self.end is None:
+            return False
+        return (self.line, self.col) < (line, col) < self.end
 
     def get(self, name: str, default: str | None = None) -> str | None:
         return self.attrs.get(name, default)
@@ -175,6 +188,9 @@ class _TreeBuilder(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         for index in range(len(self.stack) - 1, 0, -1):
             if self.stack[index].tag == tag:
+                line, offset = self.getpos()
+                for node in self.stack[index:]:
+                    node.end = (line, offset + 1)
                 del self.stack[index:]
                 return
         # Stray end tag (common in partial templates) - ignore it.

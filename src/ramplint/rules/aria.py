@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from ramplint.dom import Node
 from ramplint.rules import aria_data as data
 from ramplint.rules.base import rule
-from ramplint.template import may_render_markup
+from ramplint.rules.ids import template_ids
 
 _INTEGER_RE = re.compile(r"^[+-]?\d+$")
 _NUMBER_RE = re.compile(r"^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$")
@@ -91,20 +91,6 @@ def aria_valid_attr(root: Node) -> Iterator[tuple[Node, str]]:
 # --------------------------------------------------------------------------
 
 
-def _static_ids(root: Node) -> set[str] | None:
-    """All ids in the template, or None if some may be rendered elsewhere."""
-    if may_render_markup(root.text()):
-        return None
-    ids: set[str] = set()
-    for node in root.iter():
-        if node.dynamic_attrs or node.is_dynamic("id"):
-            return None
-        element_id = (node.get("id") or "").strip()
-        if element_id:
-            ids.add(element_id)
-    return ids
-
-
 def _value_problem(name: str, value: str) -> str | None:
     stripped = value.strip()
     lowered = stripped.lower()
@@ -138,7 +124,7 @@ def _value_problem(name: str, value: str) -> str | None:
     wcag="4.1.2 Name, Role, Value (A)",
 )
 def aria_valid_attr_value(root: Node) -> Iterator[tuple[Node, str]]:
-    known_ids = _static_ids(root)
+    known_ids = template_ids(root)
     for node in root.iter():
         for name, value in node.attrs.items():
             if name not in data.ATTRIBUTES or node.is_dynamic(name):
