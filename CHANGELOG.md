@@ -12,6 +12,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   summary (#8).
 - `--format html`: a self-contained HTML report with a summary, problems by
   rule and problems grouped by template; light and dark themes (#9).
+- HTML report shows the template lines around each problem, links rules to
+  their documentation and can be filtered by rule and template (#10).
 
 ### Changed
 

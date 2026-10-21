@@ -95,11 +95,17 @@ Files passed explicitly are always checked, whatever their extension.
 instead. Missing folders are created, and colors are never written to files.
 
 The HTML report needs no internet connection, so it can be attached to an email
-or stored as a CI artifact. It follows the light or dark theme of the viewer's
-system, and it passes ramplint itself.
+or stored as a CI artifact. Every problem comes with the surrounding template
+lines, rule names link to their documentation, and you can filter by rule or
+template. It follows the light or dark theme of the viewer's system, and it
+passes ramplint itself.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/iLLcruS/ramplint/main/docs/html-report.png" alt="HTML report: a blue header with 32 problems in 6 templates, a table of problems by rule and a list of templates with problems" width="800">
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/iLLcruS/ramplint/main/docs/html-report-details.png" alt="HTML report details: filters by rule and template, and each problem with the highlighted line of template source" width="800">
 </p>
 
 | Exit code | Meaning                      |

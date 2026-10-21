@@ -17,6 +17,13 @@ class Rule:
     wcag: str
     check: Check
 
+    @property
+    def docs_url(self) -> str:
+        """Where the rule is explained (the rule's section in the README)."""
+        return f"{DOCS_BASE_URL}#{self.code.lower()}-{self.name}"
+
+
+DOCS_BASE_URL = "https://github.com/iLLcruS/ramplint"
 
 REGISTRY: dict[str, Rule] = {}
 

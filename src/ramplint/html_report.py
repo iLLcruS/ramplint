@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from html import escape
 from importlib.resources import files
 from itertools import groupby
+from pathlib import Path
 from typing import TextIO
 
 from ramplint import __version__
@@ -34,6 +35,85 @@ def _headline(violations: Sequence[Violation], files_checked: int) -> str:
     return f"{_plural(len(violations), 'accessibility problem')} in {_plural(affected, 'template')}"
 
 
+_CONTEXT_LINES = 2
+_MAX_LINE_LENGTH = 200
+
+_SCRIPT = files("ramplint").joinpath("report.js").read_text(encoding="utf-8")
+
+
+class _SourceCache:
+    """Reads each template once; missing or unreadable files have no snippet."""
+
+    def __init__(self) -> None:
+        self._lines: dict[str, list[str] | None] = {}
+
+    def lines(self, path: str) -> list[str] | None:
+        if path not in self._lines:
+            try:
+                text = Path(path).read_text(encoding="utf-8", errors="replace")
+                self._lines[path] = text.splitlines()
+            except OSError:
+                self._lines[path] = None
+        return self._lines[path]
+
+
+def _snippet(lines: list[str] | None, line: int) -> str:
+    """Template source around ``line`` with that line highlighted."""
+    if not lines or not 1 <= line <= len(lines):
+        return ""
+    first = max(1, line - _CONTEXT_LINES)
+    last = min(len(lines), line + _CONTEXT_LINES)
+    rendered = []
+    for number in range(first, last + 1):
+        text = lines[number - 1].expandtabs(4).rstrip()
+        if len(text) > _MAX_LINE_LENGTH:
+            text = text[:_MAX_LINE_LENGTH] + "…"
+        css = "src-line hl" if number == line else "src-line"
+        rendered.append(
+            f'<span class="{css}"><span class="ln">{number}</span>{escape(text)}</span>'
+        )
+    return (
+        f'<pre class="snippet" tabindex="0" aria-label="Template source around line {line}">'
+        f"<code>{''.join(rendered)}</code></pre>"
+    )
+
+
+def _rule_link(code: str, name: str) -> str:
+    rule = REGISTRY.get(code)
+    label = escape(name)
+    if rule is None:
+        return f'<span class="rule-name">{label}</span>'
+    return f'<a class="rule-name" href="{escape(rule.docs_url)}">{label}</a>'
+
+
+def _filters(violations: Sequence[Violation]) -> str:
+    """Filter controls. Hidden until the script runs, so the page still works
+    in email clients and viewers that block JavaScript."""
+    rule_options = "".join(
+        f'<option value="{escape(code)}">{escape(code)} {escape(name)}</option>'
+        for code, name in sorted({(v.code, v.name) for v in violations})
+    )
+    paths = list(dict.fromkeys(v.path for v in violations))
+    file_options = "".join(
+        f'<option value="file-{index}">{escape(path)}</option>'
+        for index, path in enumerate(paths, start=1)
+    )
+    return (
+        '<form class="filters box" id="filters" hidden>'
+        '<h2 id="filters-title">Filter problems</h2>'
+        '<div class="filter-row">'
+        '<label for="filter-rule">Rule</label>'
+        f'<select id="filter-rule"><option value="">All rules</option>{rule_options}</select>'
+        '<label for="filter-file">Template</label>'
+        f'<select id="filter-file"><option value="">All templates</option>{file_options}</select>'
+        '<button type="reset">Show all</button>'
+        "</div>"
+        f'<p id="filter-status" class="filter-status" aria-live="polite" '
+        f'data-total="{len(violations)}"></p>'
+        "</form>"
+    )
+
+
 def _rule_table(violations: Sequence[Violation]) -> str:
     counts = Counter((v.code, v.name) for v in violations)
     rows = []
@@ -43,7 +123,7 @@ def _rule_table(violations: Sequence[Violation]) -> str:
         rows.append(
             "<tr>"
             f'<th scope="row"><span class="code">{escape(code)}</span>'
-            f'<span class="rule-name">{escape(name)}</span></th>'
+            f"{_rule_link(code, name)}</th>"
             f'<td class="what">{summary}</td>'
             f'<td class="num">{count}</td>'
             "</tr>"
@@ -61,6 +141,7 @@ def _file_sections(violations: Sequence[Violation]) -> tuple[str, str]:
     """Return (list of links to files, one section per file)."""
     links: list[str] = []
     sections: list[str] = []
+    sources = _SourceCache()
     for index, (path, group) in enumerate(groupby(violations, key=lambda v: v.path), start=1):
         items = list(group)
         anchor = f"file-{index}"
@@ -68,12 +149,13 @@ def _file_sections(violations: Sequence[Violation]) -> tuple[str, str]:
         links.append(
             f'<li><a href="#{anchor}">{escape(path)}</a><span class="count">{count}</span></li>'
         )
+        lines = sources.lines(path)
         rows = "".join(
-            "<tr>"
+            f'<tr data-rule="{escape(v.code)}">'
             f'<td class="loc">{v.line}:{v.col}</td>'
             f'<th scope="row"><span class="code">{escape(v.code)}</span>'
-            f'<span class="rule-name">{escape(v.name)}</span></th>'
-            f'<td class="message">{escape(v.message)}</td>'
+            f"{_rule_link(v.code, v.name)}</th>"
+            f'<td class="message">{escape(v.message)}{_snippet(lines, v.line)}</td>'
             "</tr>"
             for v in items
         )
@@ -107,6 +189,7 @@ def report_html(
             '<h2 id="by-file">Templates with problems</h2>'
             f'<ul class="files">{file_links}</ul></nav>'
             "</div>"
+            f"{_filters(violations)}"
             f"{file_sections}"
         )
     else:
@@ -138,5 +221,6 @@ def report_html(
         '<a href="https://github.com/iLLcruS/ramplint">ramplint</a>. '
         "Static checks catch structural problems; also test with a keyboard and a "
         "screen reader.</footer>\n"
+        f"<script>{_SCRIPT}</script>\n"
         "</body>\n</html>\n"
     )
