@@ -6,6 +6,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-21
+
 ### Added
 
 - Django project discovery: in a folder with `manage.py`, `ramplint` reads the
@@ -210,7 +212,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Configuration via `[tool.ramplint]` in `pyproject.toml`.
 - pre-commit hook.
 
-[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.4.1...HEAD
+[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.5.0...HEAD
+[0.5.0]: https://github.com/iLLcruS/ramplint/compare/0.4.1...0.5.0
 [0.4.1]: https://github.com/iLLcruS/ramplint/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/iLLcruS/ramplint/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/iLLcruS/ramplint/compare/0.3.0...0.3.1

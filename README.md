@@ -645,7 +645,7 @@ line, `--settings MODULE` and `--no-django` do the same.
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/iLLcruS/ramplint
-    rev: 0.4.1
+    rev: 0.5.0
     hooks:
       - id: ramplint
 ```
