@@ -24,6 +24,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Text Processing :: Markup :: HTML",
     "Typing :: Typed",
@@ -62,6 +63,10 @@ addopts = "-q"
 [tool.coverage.run]
 source = ["ramplint"]
 branch = true
+
+[tool.coverage.report]
+fail_under = 95
+show_missing = true
 
 [tool.ruff]
 line-length = 100

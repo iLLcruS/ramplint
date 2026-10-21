@@ -1,5 +1,8 @@
 name: Release
 
+# Publishes to PyPI when a GitHub release is published. Nothing is uploaded
+# unless the tag matches the package version and every check below passes.
+
 on:
   release:
     types: [published]
@@ -11,9 +14,37 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - run: pip install build
-      - run: python -m build
+          python-version: "3.13"
+
+      - name: Check tag matches package version
+        run: |
+          VERSION=$(python -c "import re; print(re.search(r'__version__ = \"(.+?)\"', open('src/ramplint/__init__.py').read()).group(1))")
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "$VERSION" != "$TAG" ]; then
+            echo "::error::Release tag $GITHUB_REF_NAME does not match package version $VERSION"
+            exit 1
+          fi
+
+      - name: Run the test suite
+        run: |
+          pip install -e ".[dev]"
+          pytest --cov
+
+      - name: Build and check
+        run: |
+          pip install build twine
+          python -m build
+          twine check --strict dist/*
+          python scripts/check_dist.py dist
+
+      - name: Smoke test the wheel
+        working-directory: /tmp
+        run: |
+          python -m venv /tmp/venv
+          /tmp/venv/bin/pip install "$GITHUB_WORKSPACE"/dist/*.whl
+          /tmp/venv/bin/ramplint --version
+          /tmp/venv/bin/ramplint --explain RL101 > /dev/null
+
       - uses: actions/upload-artifact@v4
         with:
           name: dist
