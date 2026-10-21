@@ -41,6 +41,21 @@ twine check --strict dist/*
 python scripts/check_dist.py dist
 ```
 
+## Licensing of contributions
+
+ramplint is available under the PolyForm Small Business and PolyForm
+Noncommercial licenses, and under commercial licenses sold to larger
+companies (see [COMMERCIAL.md](COMMERCIAL.md)). To keep that possible, every
+contribution needs the following agreement. By opening a pull request you
+confirm that:
+
+- the contribution is your own work, or you have the right to submit it;
+- you grant Vladyslav Rostovskyi a perpetual, worldwide, non-exclusive,
+  royalty-free, irrevocable license to use, modify, distribute and sublicense
+  your contribution, including under the licenses above and under commercial
+  licenses;
+- you keep the copyright in your contribution and may use it however you like.
+
 ## Reporting false positives
 
 False positives are bugs. Please open an issue with the smallest template

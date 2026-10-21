@@ -8,8 +8,8 @@ dynamic = ["version"]
 description = "Accessibility (WCAG) linter for Django and Jinja2 templates"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
-license-files = ["LICENSE"]
+license = "PolyForm-Small-Business-1.0.0 OR PolyForm-Noncommercial-1.0.0"
+license-files = ["LICENSE", "LICENSES/*.md"]
 authors = [{ name = "Vladyslav Rostovskyi", email = "rostovskii.1020@gmail.com" }]
 keywords = [
     "accessibility", "a11y", "wcag", "aria", "screen-reader", "django", "jinja2",
@@ -57,7 +57,10 @@ packages = ["src/ramplint"]
 "docs/rules" = "ramplint/rule_docs"
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "tests", "examples", "docs", "README.md", "CHANGELOG.md", "LICENSE"]
+include = [
+    "src", "tests", "examples", "docs", "README.md", "CHANGELOG.md", "COMMERCIAL.md",
+    "LICENSE", "LICENSES",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

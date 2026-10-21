@@ -26,6 +26,9 @@ WHEEL_REQUIRED = [
 SDIST_REQUIRED = [
     "README.md",
     "LICENSE",
+    "LICENSES/PolyForm-Small-Business-1.0.0.md",
+    "LICENSES/PolyForm-Noncommercial-1.0.0.md",
+    "COMMERCIAL.md",
     "CHANGELOG.md",
     "pyproject.toml",
     "docs/rules/README.md",

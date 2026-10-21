@@ -6,6 +6,18 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-21
+
+### Changed
+
+- **License.** ramplint is now available under your choice of the PolyForm
+  Small Business License 1.0.0 or the PolyForm Noncommercial License 1.0.0
+  instead of MIT. It stays free for personal use, learning, research,
+  non-profits and companies with fewer than 100 people and less than 1M USD
+  revenue; larger companies need a commercial license (see `COMMERCIAL.md`).
+  Versions 0.5.0 and earlier stay available under the MIT License.
+- Contributions are accepted under the terms in `CONTRIBUTING.md`.
+
 ## [0.5.0] - 2026-10-21
 
 ### Added
@@ -212,7 +224,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Configuration via `[tool.ramplint]` in `pyproject.toml`.
 - pre-commit hook.
 
-[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.5.0...HEAD
+[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.5.1...HEAD
+[0.5.1]: https://github.com/iLLcruS/ramplint/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/iLLcruS/ramplint/compare/0.4.1...0.5.0
 [0.4.1]: https://github.com/iLLcruS/ramplint/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/iLLcruS/ramplint/compare/0.3.1...0.4.0
