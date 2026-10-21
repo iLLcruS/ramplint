@@ -5,6 +5,7 @@ import os
 from collections.abc import Iterable, Iterator
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 
 from ramplint import dom
 from ramplint.rules import Rule, select_rules
@@ -36,12 +37,22 @@ class Violation:
 
 
 def lint_source(
-    source: str, path: str = "<string>", rules: Iterable[Rule] | None = None
+    source: str,
+    path: str = "<string>",
+    rules: Iterable[Rule] | None = None,
+    context: Any = None,
 ) -> list[Violation]:
-    """Lint template source code and return the problems found."""
+    """Lint template source code and return the problems found.
+
+    ``context`` (a :class:`ramplint.project.context.TemplateContext`) lets
+    rules look at the templates this one extends and includes.
+    """
     active = list(rules) if rules is not None else select_rules()
     prepared = prepare(source)
     root = dom.parse(prepared.html, branch_of=prepared.branches.at, source=source)
+    if context is not None and context.template.source == source:
+        root.context = context
+        context.template.__dict__["root"] = root  # reuse this parse
     violations: set[Violation] = set()
     for rule in active:
         for node, message in rule.check(root):
@@ -60,10 +71,12 @@ def lint_source(
     return sorted(violations)
 
 
-def lint_file(path: str | Path, rules: Iterable[Rule] | None = None) -> list[Violation]:
+def lint_file(
+    path: str | Path, rules: Iterable[Rule] | None = None, context: Any = None
+) -> list[Violation]:
     path = Path(path)
     source = path.read_text(encoding="utf-8", errors="replace")
-    return lint_source(source, path=path.as_posix(), rules=rules)
+    return lint_source(source, path=path.as_posix(), rules=rules, context=context)
 
 
 def _is_excluded(path: Path, patterns: Iterable[str]) -> bool:

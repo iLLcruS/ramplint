@@ -8,7 +8,10 @@ from pathlib import Path
 
 from ramplint import __version__
 from ramplint.config import ConfigError, load_config
-from ramplint.linter import DEFAULT_EXTENSIONS, Violation, iter_template_files, lint_file
+from ramplint.linter import DEFAULT_EXCLUDE_DIRS, DEFAULT_EXTENSIONS, Violation, lint_file
+from ramplint.project.discovery import SettingsNotFound
+from ramplint.project.listing import describe_projects, print_verbose
+from ramplint.project.workspace import Workspace
 from ramplint.reporters import (
     REPORTERS,
     STATISTICS_WRITERS,
@@ -33,7 +36,12 @@ def build_parser() -> argparse.ArgumentParser:
         description="Accessibility linter for Django and Jinja2 templates.",
     )
     parser.add_argument(
-        "paths", nargs="*", default=["."], help="files or directories to lint (default: .)"
+        "paths",
+        nargs="*",
+        help=(
+            "files or directories to lint (default: the template folders of the Django "
+            "project in the current directory, or every template under it)"
+        ),
     )
     parser.add_argument(
         "--select",
@@ -71,6 +79,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the report to FILE instead of stdout (missing folders are created)",
     )
     parser.add_argument("--config", type=Path, metavar="PATH", help="path to a pyproject.toml")
+    parser.add_argument(
+        "--settings",
+        metavar="MODULE",
+        help="Django settings module to read template folders from (e.g. config.settings.base)",
+    )
+    parser.add_argument(
+        "--no-django",
+        action="store_true",
+        help="do not look for Django projects; lint every template under the given paths",
+    )
+    parser.add_argument(
+        "--list-templates",
+        action="store_true",
+        help="show the Django project, settings and template folders ramplint uses, and exit",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="print the projects, settings and template folders used to stderr",
+    )
     parser.add_argument(
         "--statistics",
         action="store_true",
@@ -180,15 +209,45 @@ def main(argv: Sequence[str] | None = None) -> int:
     extensions = args.extensions or config.extensions or list(DEFAULT_EXTENSIONS)
     exclude = [*config.exclude, *args.exclude]
 
-    violations: list[Violation] = []
-    files_checked = 0
+    settings = args.settings or config.django_settings
+    settings_source = "--settings" if args.settings else "pyproject.toml"
+    workspace = Workspace(
+        extensions=extensions,
+        exclude=exclude,
+        skip_dirs=DEFAULT_EXCLUDE_DIRS,
+        django=config.django and not args.no_django,
+        settings=settings,
+        settings_source=settings_source if settings else None,
+        template_dirs=config.template_dirs,
+        config_root=config.source.parent if config.source else None,
+    )
+
     try:
-        for path in iter_template_files(args.paths, extensions=extensions, exclude=exclude):
-            files_checked += 1
-            violations.extend(lint_file(path, rules))
+        files = list(workspace.files(args.paths))
     except FileNotFoundError as exc:
         print(f"ramplint: error: no such file or directory: {exc}", file=sys.stderr)
         return EXIT_ERROR
+    except SettingsNotFound as exc:
+        print(f"ramplint: error: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+
+    if args.list_templates:
+        if args.format not in (None, "text", "json"):
+            print(
+                "ramplint: error: --list-templates works with --format text or json",
+                file=sys.stderr,
+            )
+            return EXIT_ERROR
+        describe_projects(workspace, args.paths, files, args.format or "text", sys.stdout)
+        return EXIT_OK
+    if args.verbose:
+        print_verbose(workspace, files, sys.stderr)
+
+    violations: list[Violation] = []
+    files_checked = 0
+    for path in files:
+        files_checked += 1
+        violations.extend(lint_file(path, rules, context=workspace.context_for(path)))
 
     if args.output is not None or args.statistics:
         # Annotations only make sense for the full report on stdout.

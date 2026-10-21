@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{# No {% block title %}: base.html renders an empty <title>. #}
+
+{% block content %}
+{# base.html already shows the page <h1>, so this skips <h2>. #}
+<h3>{% trans "All products" %}</h3>
+
+{# The <input id="search-q"> comes from the include: the label is fine. #}
+<label for="search-q">{% trans "Search products" %}</label>
+{% include "partials/search.html" %}
+
+{# base.html wraps this block in <main> already. #}
+<main class="product-grid">
+  {% for product in products %}
+    <a href="{{ product.get_absolute_url }}">{{ product.name }}</a>
+  {% endfor %}
+</main>
+{% endblock %}

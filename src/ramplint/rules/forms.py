@@ -5,8 +5,9 @@ from collections.abc import Iterator
 
 from ramplint.dom import Node
 from ramplint.rules.base import rule
+from ramplint.rules.ids import template_ids
 from ramplint.rules.names import has_naming_attribute
-from ramplint.template import MARKUP, PLACEHOLDERS
+from ramplint.template import PLACEHOLDERS
 
 #: Input types that are not labelled with <label> (or are not visible).
 UNLABELLED_INPUT_TYPES = frozenset({"hidden", "submit", "button", "reset", "image"})
@@ -191,24 +192,7 @@ def autocomplete_valid(root: Node) -> Iterator[tuple[Node, str]]:
 _LABELABLE = frozenset({"input", "select", "textarea", "button", "meter", "output", "progress"})
 
 
-def _template_ids(root: Node) -> dict[str, Node] | None:
-    """Every id in the template, or None if some may be rendered elsewhere."""
-    if MARKUP in root.text():
-        # {% include %}, {{ form.email }}, {% block %} of a base template ...
-        # A {% block %} of a child template renders its own content, which
-        # is right here, so it does not hide the target.
-        return None
-    ids: dict[str, Node] = {}
-    for node in root.iter():
-        if node.dynamic_attrs or node.is_dynamic("id"):
-            return None
-        element_id = (node.get("id") or "").strip()
-        if element_id:
-            ids.setdefault(element_id, node)
-    return ids
-
-
-def _for_hint(root: Node, target: str, ids: dict[str, Node]) -> str:
+def _for_hint(root: Node, target: str, ids: dict[str, Node | None]) -> str:
     for node in root.iter(*_LABELABLE):
         if (node.get("name") or "").strip() == target and not node.has_value("id"):
             return f'; add id="{target}" to the <{node.tag} name="{target}">'
@@ -223,7 +207,7 @@ def _for_hint(root: Node, target: str, ids: dict[str, Node]) -> str:
     wcag="1.3.1 Info and Relationships (A), 4.1.2 Name, Role, Value (A)",
 )
 def label_for_target(root: Node) -> Iterator[tuple[Node, str]]:
-    ids = _template_ids(root)
+    ids = template_ids(root)
     if ids is None:
         return
     for label in root.iter("label"):

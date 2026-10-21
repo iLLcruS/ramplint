@@ -46,14 +46,16 @@ examples/templates/accounts/login.html:10:3: RL401 <input type="text"> has no as
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 54 problems in 12 of 14 files.
+Found 59 problems in 14 of 20 files.
 ```
 
 See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/examples/README.md) for what each demo template contains.
 
 ## Highlights
 
-- **35 rules.** Images, tables, lists, landmarks, forms, controls, page language and WAI-ARIA, each with a documentation page.
+- **Knows your Django project.** Reads `TEMPLATES` and `INSTALLED_APPS` from your settings (without importing them) and lints exactly the folders Django loads templates from.
+- **Sees across templates.** Follows `{% extends %}` and `{% include %}`: a skipped heading after the `<h1>` in `base.html`, an empty page title or a label for a field in an included partial are all checked.
+- **36 rules.** Images, tables, lists, landmarks, forms, controls, page language and WAI-ARIA, each with a documentation page.
 - **Template-aware.** Django and Jinja2 tags, variables and comments are understood, not stripped blindly.
 - **Low noise.** If something is only known at render time (`{% include %}`, `{{ form.email }}`, `{{ widget.attrs }}`, `{% block %}`), ramplint assumes the best and stays quiet.
 - **Zero dependencies.** Pure Python standard library (plus `tomli` on Python < 3.11).
@@ -69,8 +71,9 @@ pip install ramplint
 ## Usage
 
 ```bash
-ramplint                        # lint every template under the current directory
+ramplint                        # lint the template folders of the Django project here
 ramplint templates/ shop/templates/base.html
+ramplint --list-templates       # which project, settings and template folders were found
 ramplint --select RL1,RL5       # only image and control rules
 ramplint --ignore heading-order # rules can be referenced by code or name
 ramplint --format json          # machine-readable output
@@ -84,6 +87,67 @@ ramplint --explain RL303        # what a rule checks and how to fix it
 By default ramplint looks at `.html`, `.htm`, `.jinja`, `.jinja2`, `.j2` and
 `.djhtml` files and skips folders such as `node_modules`, `.venv`, `build` and `dist`.
 Files passed explicitly are always checked, whatever their extension.
+
+## Django projects
+
+Run `ramplint` in the folder with `manage.py` and it lints the templates Django
+actually uses, and nothing else (no `static/`, `node_modules/` or docs):
+
+1. **Settings.** The module from `--settings` or `django-settings` in
+   `pyproject.toml`, else `DJANGO_SETTINGS_MODULE`, else the
+   `os.environ.setdefault(...)` in `manage.py`, `wsgi.py` or `asgi.py`, else a
+   `settings.py` / `settings/` package next to `manage.py`.
+2. **Template folders.** Every folder in `TEMPLATES[...]["DIRS"]`, then
+   `<app>/templates/` (or `<app>/jinja2/` for the Jinja2 backend) for each app of
+   yours in `INSTALLED_APPS` when `APP_DIRS` or the app directories loader is on.
+   Django's own and third-party apps are skipped.
+3. **No usable settings?** Every `templates/` and `jinja2/` folder next to an
+   `apps.py` or `models.py`, plus the project-level `templates/`.
+
+Settings are **read, never imported**: ramplint evaluates assignments, star
+imports (`from .base import *`), `+=`, `.append()` and the usual path building
+(`BASE_DIR / "templates"`, `os.path.join(...)`, `Path(__file__).resolve().parent`).
+Values it cannot compute, such as `env("TEMPLATE_DIR")`, are skipped and listed
+as warnings. Settings packages, cookiecutter-django, `src/` layouts, apps in a
+subfolder and Jinja2 are supported; in a monorepo, every project below the
+current folder is found.
+
+Check what was found:
+
+```console
+$ cd examples/django_project && ramplint --list-templates
+Project   .
+Settings  config.settings.dev (from manage.py)
+Template folders:
+  templates           DIRS          3 templates
+  catalog/templates   app catalog   1 template
+  accounts/templates  app accounts  1 template
+  catalog/jinja2      app catalog   1 template (jinja2)
+
+6 templates to lint.
+```
+
+`--list-templates --format json` gives the same as data, and `--verbose` prints
+it to stderr before linting. Explicit paths always win: `ramplint some/file.html`
+lints that file, and a folder without `manage.py` is walked as before. Turn
+discovery off with `--no-django` or `django = false`, or list the folders
+yourself with `template-dirs` (see [Configuration](#configuration)).
+
+### Across templates
+
+With the template folders known, ramplint resolves `{% extends %}` and
+`{% include %}` the way Django's loaders do (outside a project, it uses the
+nearest folder called `templates` or `jinja2`):
+
+| Rule | What it sees |
+|------|--------------|
+| `RL301` heading-order | A child template's headings follow the heading `base.html` renders before the block |
+| `RL603` document-title | A page whose `<title>{% block title %}{% endblock %}</title>` stays empty |
+| `RL306` landmark-one-main | A `<main>` inside a block that `base.html` already wraps in `<main>` |
+| `RL403`, `RL703` | Ids from included partials and from the templates a page extends |
+
+When a template cannot be resolved (a name from a variable, `{{ block.super }}`,
+a missing file), these checks stay quiet.
 
 ### Output formats
 
@@ -119,10 +183,12 @@ decide what to fix first:
 $ ramplint examples/ --statistics
 7  RL401  form-label
 6  RL502  link-name
-4  RL101  img-alt
+5  RL101  img-alt
 4  RL501  button-name
+3  RL301  heading-order
 2  RL201  table-header
-2  RL301  heading-order
+2  RL306  landmark-one-main
+2  RL603  document-title
 1  RL102  iframe-title
 1  RL103  video-caption
 1  RL104  svg-img-alt
@@ -134,16 +200,15 @@ $ ramplint examples/ --statistics
 1  RL303  duplicate-id
 1  RL304  list-structure
 1  RL305  definition-list
-1  RL306  landmark-one-main
 1  RL402  autocomplete-valid
 1  RL403  label-for-target
 1  RL503  no-positive-tabindex
 1  RL504  anchor-is-valid
 1  RL505  nested-interactive
 1  RL506  duplicate-accesskey
+1  RL507  focusable-role
 1  RL601  html-lang
 1  RL602  viewport-zoom
-1  RL603  document-title
 1  RL604  valid-lang
 1  RL605  meta-refresh
 1  RL606  obsolete-elements
@@ -153,7 +218,7 @@ $ ramplint examples/ --statistics
 1  RL704  aria-required-attr
 1  RL705  aria-hidden-focus
 
-Found 54 problems in 12 of 14 files.
+Found 59 problems in 14 of 20 files.
 ```
 
 It works with `--format text` (default) and `--format json`.
@@ -192,6 +257,7 @@ It works with `--format text` (default) and `--format json`.
 | [`RL504`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL504.md) | `anchor-is-valid` | Links have a real target (no `href="#"`, `javascript:` or click-only `<a>`)        | 2.1.1 (A)        |
 | [`RL505`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL505.md) | `nested-interactive` | No buttons, links or other controls inside `<a href>` or `<button>` | 4.1.2 (A) |
 | [`RL506`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL506.md) | `duplicate-accesskey` | `accesskey` values are unique | Best practice |
+| [`RL507`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL507.md) | `focusable-role` | Elements with an interactive role can get keyboard focus (`<div role="switch">` needs `tabindex`) | 2.1.1, 4.1.2 (A) |
 | [`RL601`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL601.md) | `html-lang`     | `<html>` declares the page language                                                      | 3.1.1 (A)        |
 | [`RL602`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL602.md) | `viewport-zoom` | `<meta name="viewport">` does not disable zoom (`user-scalable=no`, `maximum-scale` < 2) | 1.4.4 (AA)       |
 | [`RL603`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL603.md) | `document-title` | Full-page templates have a non-empty `<title>` | 2.4.2 (A) |
@@ -443,6 +509,17 @@ button) differently, and the inner one is often unreachable by keyboard.
 {# ✓ #} <a href="/search/" accesskey="f">Search</a> <button accesskey="s">Save</button>
 ```
 
+#### RL507 `focusable-role`
+
+```django
+{# ✗ #} <span role="button" onclick="toggle()">Menu</span>
+{# ✓ #} <button type="button" onclick="toggle()">Menu</button>
+{# ✓ #} <span role="tab" tabindex="-1" aria-selected="false">Reviews</span>
+```
+
+Any `tabindex` (including `-1` for roving focus) is accepted; options, tree
+items and grid cells are skipped because their container usually manages focus.
+
 #### RL601 `html-lang`
 
 ```django
@@ -524,6 +601,8 @@ length, so positions in the report always match your source:
 | `{# ... #}`, `{% comment %}...{% endcomment %}`              | Nothing                         |
 
 Both branches of an `{% if %}` are checked, so a problem in either one is reported.
+In a child template (one with `{% extends %}`), `{% block %}` renders the content
+written right there, and content outside blocks is ignored, as Django does.
 
 ## Suppressing problems
 
@@ -550,7 +629,15 @@ select = ["RL"]                          # default: all rules
 ignore = ["RL301"]
 exclude = ["*/admin/*", "templates/vendor/*"]
 extensions = [".html", ".txt"]
+
+# Django projects (all optional)
+django-settings = "config.settings.base"   # instead of manage.py / DJANGO_SETTINGS_MODULE
+template-dirs = ["templates", "shop/templates"]  # use these folders, skip discovery
+django = false                           # walk every folder instead
 ```
+
+`template-dirs` are relative to the folder of `pyproject.toml`. On the command
+line, `--settings MODULE` and `--no-django` do the same.
 
 ## pre-commit
 
@@ -623,10 +710,11 @@ tool such as axe.
 
 ## Roadmap
 
-- [x] 35 rules for images, tables, structure, forms, controls, the document and WAI-ARIA
+- [x] 36 rules for images, tables, structure, forms, controls, the document and WAI-ARIA
 - [x] HTML report and SARIF output for GitHub Code Scanning
+- [x] Find Django template folders from the settings; follow `{% extends %}` / `{% include %}`
 - [ ] `--fix` for safe autofixes (e.g. `scope="col"` on header rows)
-- [ ] Follow `{% extends %}` / `{% include %}` to check heading order, ids and labels across templates
+- [ ] Check partials against the templates that include them (a `<label>` in the page, the field in the partial)
 - [ ] Jinja2 macros
 - [ ] VS Code extension
 

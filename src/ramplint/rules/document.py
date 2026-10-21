@@ -99,7 +99,9 @@ def _document_title(html: Node) -> Node | None:
 def document_title(root: Node) -> Iterator[tuple[Node, str]]:
     html = next(root.iter("html"), None)
     if html is None:
-        return  # a partial or a child template: the parent owns the <title>
+        # A partial or a child template: the parent owns the <title>.
+        yield from _empty_title_block(root)
+        return
     title = _document_title(html)
     if title is None:
         head = next(html.iter("head"), None)
@@ -114,6 +116,23 @@ def document_title(root: Node) -> Iterator[tuple[Node, str]]:
     if title.dynamic_attrs or title.text().strip():
         return
     yield title, "<title> is empty; describe the page, e.g. <title>Orders | Shop</title>"
+
+
+def _empty_title_block(root: Node) -> Iterator[tuple[Node, str]]:
+    context = root.context
+    if context is None:
+        return
+    found = context.empty_title_block()
+    if found is None:
+        return
+    base, name = found
+    line, col = context.template.position(context.template.extends.offset)
+    yield (
+        Node(tag="#extends", attrs={}, line=line, col=col),
+        f"The page title stays empty: {base.path.name} renders "
+        f"<title>{{% block {name} %}}{{% endblock %}}</title> and nothing fills the "
+        f'"{name}" block; add {{% block {name} %}}Orders | Shop{{% endblock %}}',
+    )
 
 
 # --------------------------------------------------------------------------

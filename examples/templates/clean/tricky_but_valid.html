@@ -114,6 +114,11 @@
 <svg role="img" viewBox="0 0 120 40"><title>{% trans "Sales grew 20% this year" %}</title><rect width="80" height="20"></rect></svg>
 <object data="{% static 'docs/prices.pdf' %}" type="application/pdf"><a href="{% static 'docs/prices.pdf' %}">{% trans "Download the price list (PDF)" %}</a></object>
 
+{# Interactive roles that can be focused: tabindex, roving tabindex, a managed listbox. #}
+<div role="tablist"><span role="tab" tabindex="0" aria-selected="true">{% trans "Details" %}</span><span role="tab" tabindex="-1" aria-selected="false">{% trans "Reviews" %}</span></div>
+<ul role="listbox" tabindex="0" aria-label="{% trans 'Size' %}" aria-activedescendant="size-m"><li role="option" id="size-m" aria-selected="true">M</li></ul>
+<span role="button" aria-disabled="true">{% trans "Sold out" %}</span>
+
 {# Access keys: unique, or the same key in exclusive branches. #}
 <a href="{% url 'search' %}" accesskey="f">{% trans "Find" %}</a>
 {% if user.is_authenticated %}<a href="{% url 'account' %}" accesskey="a">{% trans "Account" %}</a>{% else %}<a href="{% url 'login' %}" accesskey="a">{% trans "Log in" %}</a>{% endif %}
