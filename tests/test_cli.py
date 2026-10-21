@@ -119,8 +119,8 @@ def test_examples_directory(capsys, monkeypatch):
     by_file: dict[str, list[str]] = {}
     for v in data["violations"]:
         by_file.setdefault(Path(v["path"]).name, []).append(v["code"])
-    assert data["files_checked"] == 12
-    assert len(data["violations"]) == 47
+    assert data["files_checked"] == 14
+    assert len(data["violations"]) == 54
     # Clean templates must stay silent - they guard against false positives.
     assert "list_fixed.html" not in by_file
     assert "tricky_but_valid.html" not in by_file

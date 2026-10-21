@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from ramplint.dom import Node
 from ramplint.rules import aria_data as data
 from ramplint.rules.base import rule
-from ramplint.template import MARKUP
+from ramplint.template import may_render_markup
 
 _INTEGER_RE = re.compile(r"^[+-]?\d+$")
 _NUMBER_RE = re.compile(r"^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$")
@@ -93,7 +93,7 @@ def aria_valid_attr(root: Node) -> Iterator[tuple[Node, str]]:
 
 def _static_ids(root: Node) -> set[str] | None:
     """All ids in the template, or None if some may be rendered elsewhere."""
-    if MARKUP in root.text():
+    if may_render_markup(root.text()):
         return None
     ids: set[str] = set()
     for node in root.iter():

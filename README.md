@@ -46,7 +46,7 @@ examples/templates/accounts/login.html:10:3: RL401 <input type="text"> has no as
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 47 problems in 10 of 12 files.
+Found 54 problems in 12 of 14 files.
 ```
 
 See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/examples/README.md) for what each demo template contains.
@@ -116,13 +116,17 @@ decide what to fix first:
 
 ```console
 $ ramplint examples/ --statistics
-6  RL401  form-label
+7  RL401  form-label
 6  RL502  link-name
 4  RL101  img-alt
 4  RL501  button-name
 2  RL201  table-header
 2  RL301  heading-order
 1  RL102  iframe-title
+1  RL103  video-caption
+1  RL104  svg-img-alt
+1  RL105  object-alt
+1  RL106  media-autoplay
 1  RL202  th-scope
 1  RL203  empty-table-header
 1  RL302  empty-heading
@@ -131,9 +135,11 @@ $ ramplint examples/ --statistics
 1  RL305  definition-list
 1  RL306  landmark-one-main
 1  RL402  autocomplete-valid
+1  RL403  label-for-target
 1  RL503  no-positive-tabindex
 1  RL504  anchor-is-valid
 1  RL505  nested-interactive
+1  RL506  duplicate-accesskey
 1  RL601  html-lang
 1  RL602  viewport-zoom
 1  RL603  document-title
@@ -146,7 +152,7 @@ $ ramplint examples/ --statistics
 1  RL704  aria-required-attr
 1  RL705  aria-hidden-focus
 
-Found 47 problems in 10 of 12 files.
+Found 54 problems in 12 of 14 files.
 ```
 
 It works with `--format text` (default) and `--format json`.
@@ -163,6 +169,10 @@ It works with `--format text` (default) and `--format json`.
 |---------|-----------------|------------------------------------------------------------------------------------------|------------------|
 | [`RL101`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL101.md) | `img-alt`       | `<img>` has an `alt` attribute; `<input type="image">` and `<area>` have non-empty `alt` | 1.1.1 (A)        |
 | [`RL102`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL102.md) | `iframe-title`  | `<iframe>` has a `title` describing its content                                          | 4.1.2 (A)        |
+| [`RL103`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL103.md) | `video-caption` | `<video>` has a captions or subtitles `<track>` (muted videos are skipped) | 1.2.2 (A) |
+| [`RL104`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL104.md) | `svg-img-alt` | `<svg role="img">` has a `<title>` or `aria-label` | 1.1.1 (A) |
+| [`RL105`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL105.md) | `object-alt` | `<object>` has fallback text or a label; `<embed>` has a `title` or `aria-label` | 1.1.1 (A) |
+| [`RL106`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL106.md) | `media-autoplay` | `<video autoplay>` / `<audio autoplay>` are `muted` | 1.4.2 (A) |
 | [`RL201`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL201.md) | `table-header`  | Data tables use real `<th>` header cells                                                 | 1.3.1 (A)        |
 | [`RL202`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL202.md) | `th-scope` | `scope` is `row`, `col`, `rowgroup` or `colgroup`, and only used on `<th>` | 1.3.1 (A) |
 | [`RL203`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL203.md) | `empty-table-header` | `<th>` cells are not empty (the top-left corner cell is allowed) | 1.3.1 (A) |
@@ -174,11 +184,13 @@ It works with `--format text` (default) and `--format json`.
 | [`RL306`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL306.md) | `landmark-one-main` | One `<main>` per page: no duplicates, none missing in full-page templates | 1.3.1, 2.4.1 (A) |
 | [`RL401`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL401.md) | `form-label`    | `<input>`, `<select>` and `<textarea>` have an associated `<label>`                      | 1.3.1, 4.1.2 (A) |
 | [`RL402`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL402.md) | `autocomplete-valid` | `autocomplete` uses valid autofill tokens (catches typos like `emial`)              | 1.3.5 (AA)       |
+| [`RL403`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL403.md) | `label-for-target` | `<label for>` points to an existing `id` (catches `for` matching the `name`) | 1.3.1, 4.1.2 (A) |
 | [`RL501`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL501.md) | `button-name`   | Buttons (including icon-only buttons) have an accessible name                            | 4.1.2 (A)        |
 | [`RL502`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL502.md) | `link-name`     | Links have an accessible name                                                            | 2.4.4, 4.1.2 (A) |
 | [`RL503`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL503.md) | `no-positive-tabindex` | `tabindex` is not greater than `0`                                                | 2.4.3 (A)        |
 | [`RL504`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL504.md) | `anchor-is-valid` | Links have a real target (no `href="#"`, `javascript:` or click-only `<a>`)        | 2.1.1 (A)        |
 | [`RL505`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL505.md) | `nested-interactive` | No buttons, links or other controls inside `<a href>` or `<button>` | 4.1.2 (A) |
+| [`RL506`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL506.md) | `duplicate-accesskey` | `accesskey` values are unique | Best practice |
 | [`RL601`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL601.md) | `html-lang`     | `<html>` declares the page language                                                      | 3.1.1 (A)        |
 | [`RL602`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL602.md) | `viewport-zoom` | `<meta name="viewport">` does not disable zoom (`user-scalable=no`, `maximum-scale` < 2) | 1.4.4 (AA)       |
 | [`RL603`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL603.md) | `document-title` | Full-page templates have a non-empty `<title>` | 2.4.2 (A) |
@@ -215,6 +227,36 @@ or run `ramplint --explain RL101` in the terminal.
 ```
 
 Frames hidden with `aria-hidden="true"` are skipped.
+
+#### RL103 `video-caption`
+
+```django
+{# ✗ #} <video controls src="{{ product.video.url }}"></video>
+{# ✓ #} <video controls src="{{ product.video.url }}"><track kind="captions" src="{{ product.captions.url }}" srclang="en"></video>
+{# ✓ #} <video autoplay muted loop src="{% static 'video/bg.mp4' %}"></video>
+```
+
+#### RL104 `svg-img-alt`
+
+```django
+{# ✗ #} <svg role="img" viewBox="0 0 24 24"><path d="…"/></svg>
+{# ✓ #} <svg role="img" viewBox="0 0 24 24"><title>{% trans "Cart" %}</title><path d="…"/></svg>
+{# ✓ #} <svg aria-hidden="true"><use href="#icon-star"></use></svg>
+```
+
+#### RL105 `object-alt`
+
+```django
+{# ✗ #} <object data="{% static 'prices.pdf' %}" type="application/pdf"></object>
+{# ✓ #} <object data="{% static 'prices.pdf' %}" type="application/pdf"><a href="{% static 'prices.pdf' %}">Download the price list (PDF)</a></object>
+```
+
+#### RL106 `media-autoplay`
+
+```django
+{# ✗ #} <audio autoplay src="{% static 'jingle.mp3' %}"></audio>
+{# ✓ #} <audio controls src="{% static 'jingle.mp3' %}"></audio>
+```
 
 #### RL201 `table-header`
 
@@ -328,6 +370,17 @@ A typo in `autocomplete` silently breaks autofill and password managers.
 ramplint validates the full token grammar from the HTML spec and suggests the
 closest valid token.
 
+#### RL403 `label-for-target`
+
+```django
+{# ✗ #} <label for="email">Email</label> <input type="email" name="email">
+{# ✓ #} <label for="email">Email</label> <input type="email" id="email" name="email">
+{# ✓ #} <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label> {{ form.email }}
+```
+
+Templates that render fields ramplint cannot see (`{{ form.email }}`,
+`{% include %}`, a `{% block %}` of a base template) are skipped.
+
 #### RL501 `button-name`
 
 ```django
@@ -377,6 +430,13 @@ order (no `href`) or does not react to the Space key like a button would.
 
 Browsers and screen readers handle a control inside a link (or a link inside a
 button) differently, and the inner one is often unreachable by keyboard.
+
+#### RL506 `duplicate-accesskey`
+
+```django
+{# ✗ #} <a href="/search/" accesskey="s">Search</a> <button accesskey="s">Save</button>
+{# ✓ #} <a href="/search/" accesskey="f">Search</a> <button accesskey="s">Save</button>
+```
 
 #### RL601 `html-lang`
 
@@ -454,6 +514,7 @@ length, so positions in the report always match your source:
 |--------------------------------------------------------------|---------------------------------|
 | `{{ variable }}`, `{% trans %}`, `{% url %}`, `{% static %}` | Text that exists at runtime     |
 | `{% include %}`, `{% block %}`, custom tags                  | Unknown markup (rules back off) |
+| `{{ form }}`, `{{ form.email }}`, `{{ field }}`, `{{ form.as_p }}`, `\|safe`, `\|as_crispy_field` | Unknown markup (rules back off) |
 | `{% if %}`, `{% for %}`, `{% with %}`, ...                   | Nothing (control flow)          |
 | `{# ... #}`, `{% comment %}...{% endcomment %}`              | Nothing                         |
 

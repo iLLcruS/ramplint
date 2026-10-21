@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from ramplint.dom import RAW_TEXT_ELEMENTS, Node
 from ramplint.rules.aria import effective_role
 from ramplint.rules.base import rule
-from ramplint.template import MARKUP, mutually_exclusive
+from ramplint.template import may_render_markup, mutually_exclusive
 
 _NOT_CONTENT = RAW_TEXT_ELEMENTS | {"head"}
 
@@ -44,7 +44,7 @@ def _has_visible_text(node: Node) -> bool:
 )
 def landmark_one_main(root: Node) -> Iterator[tuple[Node, str]]:
     mains: list[Node] = []
-    may_have_main = MARKUP in root.text()
+    may_have_main = may_render_markup(root.text())
     for node in root.iter():
         if node.inert:
             continue

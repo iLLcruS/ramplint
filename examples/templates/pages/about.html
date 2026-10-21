@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block content %}
+<h2>{% trans "About Shoply" %}</h2>
+
+<video controls poster="{% static 'video/story.jpg' %}">
+  <source src="{% static 'video/story.mp4' %}" type="video/mp4">
+</video>
+
+<audio autoplay src="{% static 'audio/welcome.mp3' %}"></audio>
+
+<h3>{% trans "Our numbers" %}</h3>
+<svg role="img" viewBox="0 0 120 40" class="chart">
+  <rect x="0" y="10" width="80" height="20"></rect>
+</svg>
+
+<h3>{% trans "Price list" %}</h3>
+<object data="{% static 'docs/prices.pdf' %}" type="application/pdf" width="600" height="400"></object>
+{% endblock %}
