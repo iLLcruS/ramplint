@@ -85,3 +85,17 @@ def test_readme_list_templates_sample_matches_real_output(capsys, monkeypatch):
     real_output = capsys.readouterr().out
     sample = README.split("$ cd examples/django_project && ramplint --list-templates\n", 1)[1]
     assert sample.split("```", 1)[0] == real_output
+
+
+def test_license_files_match_metadata():
+    tomllib = pytest.importorskip("tomllib")  # Python 3.11+
+
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    expression = pyproject["project"]["license"]
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    assert license_text.startswith("Required Notice: Copyright Vladyslav Rostovskyi")
+    for spdx in expression.split(" OR "):
+        page = ROOT / "LICENSES" / f"{spdx}.md"
+        assert page.is_file(), page
+        assert f"LICENSES/{spdx}.md" in license_text
+    assert (ROOT / "COMMERCIAL.md").is_file()

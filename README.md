@@ -9,7 +9,7 @@
   <a href="https://github.com/iLLcruS/ramplint/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/iLLcruS/ramplint/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://pypi.org/project/ramplint/"><img alt="PyPI" src="https://img.shields.io/pypi/v/ramplint.svg"></a>
   <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
-  <a href="https://github.com/iLLcruS/ramplint/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
+  <a href="https://github.com/iLLcruS/ramplint/blob/main/LICENSE"><img alt="License: free for individuals and small businesses" src="https://img.shields.io/badge/license-PolyForm%20Small%20Business%20%7C%20Noncommercial-blue.svg"></a>
   <a href="https://ko-fi.com/innerexcept"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-support-72a4f2?logo=ko-fi&logoColor=white"></a>
 </p>
 
@@ -67,6 +67,10 @@ See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/example
 ```bash
 pip install ramplint
 ```
+
+Free for personal use, learning, research, non-profits and companies with
+fewer than 100 people and less than 1M USD revenue. Larger companies need a
+[commercial license](https://github.com/iLLcruS/ramplint/blob/main/COMMERCIAL.md).
 
 ## Usage
 
@@ -645,7 +649,7 @@ line, `--settings MODULE` and `--no-django` do the same.
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/iLLcruS/ramplint
-    rev: 0.5.0
+    rev: 0.5.1
     hooks:
       - id: ramplint
 ```
@@ -729,11 +733,29 @@ Questions, ideas, or using ramplint in your project? Open an
 [issue](https://github.com/iLLcruS/ramplint/issues) or email me at
 [rostovskii.1020@gmail.com](mailto:rostovskii.1020@gmail.com).
 
-ramplint is free and built in my spare time. If it saved you time, you can
-buy me a coffee:
+ramplint is built in my spare time. If it saved you time, you can buy me a
+coffee:
 
 <a href="https://ko-fi.com/innerexcept"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" height="36"></a>
 
 ## License
 
-[MIT](https://github.com/iLLcruS/ramplint/blob/main/LICENSE) © Vladyslav Rostovskyi
+ramplint is source-available under your choice of the
+[PolyForm Small Business License 1.0.0](https://github.com/iLLcruS/ramplint/blob/main/LICENSES/PolyForm-Small-Business-1.0.0.md)
+or the
+[PolyForm Noncommercial License 1.0.0](https://github.com/iLLcruS/ramplint/blob/main/LICENSES/PolyForm-Noncommercial-1.0.0.md):
+
+| Who | License |
+|-----|---------|
+| Individuals: personal projects, learning, research | Free |
+| Schools, charities, public institutions | Free |
+| Companies with fewer than 100 people and less than 1M USD revenue | Free |
+| Larger companies (on developers' machines, in CI, in pre-commit) | [Commercial license](https://github.com/iLLcruS/ramplint/blob/main/COMMERCIAL.md) |
+
+To get a commercial license, write to
+[rostovskii.1020@gmail.com](mailto:rostovskii.1020@gmail.com).
+
+Versions 0.5.0 and earlier were released under the MIT License and stay
+available under it.
+
+© Vladyslav Rostovskyi
