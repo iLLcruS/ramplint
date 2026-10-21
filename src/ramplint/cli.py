@@ -16,7 +16,7 @@ from ramplint.reporters import (
     available_formats,
     summary_line,
 )
-from ramplint.rules import all_rules, select_rules, unknown_selectors
+from ramplint.rules import all_rules, find_rule, rule_docs, select_rules, unknown_selectors
 
 EXIT_OK = 0
 EXIT_VIOLATIONS = 1
@@ -81,13 +81,34 @@ def build_parser() -> argparse.ArgumentParser:
         "--exit-zero", action="store_true", help="exit with 0 even if problems are found"
     )
     parser.add_argument("--list-rules", action="store_true", help="list available rules and exit")
+    parser.add_argument(
+        "--explain",
+        metavar="RULE",
+        help="show the documentation of a rule (code or name, e.g. RL101 or img-alt) and exit",
+    )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser
 
 
 def _list_rules() -> None:
-    for rule in all_rules():
-        print(f"{rule.code}  {rule.name:<15} {rule.summary}  [WCAG {rule.wcag}]")
+    rules = all_rules()
+    width = max(len(rule.name) for rule in rules)
+    for rule in rules:
+        print(f"{rule.code}  {rule.name:<{width}}  {rule.summary}  [WCAG {rule.wcag}]")
+
+
+def _explain(selector: str) -> int:
+    rule = find_rule(selector)
+    if rule is None:
+        print(f"ramplint: error: unknown rule: {selector}", file=sys.stderr)
+        return EXIT_ERROR
+    docs = rule_docs(rule)
+    if docs is None:
+        print(f"{rule.code} {rule.name}: {rule.summary}\nWCAG {rule.wcag}\n{rule.docs_url}")
+    else:
+        print(docs.rstrip())
+        print(f"\nOnline: {rule.docs_url}")
+    return EXIT_OK
 
 
 def _use_color(no_color: bool) -> bool:
@@ -131,6 +152,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.list_rules:
         _list_rules()
         return EXIT_OK
+    if args.explain:
+        return _explain(args.explain)
 
     if args.statistics and args.format not in (None, *STATISTICS_WRITERS):
         supported = " or ".join(sorted(STATISTICS_WRITERS))

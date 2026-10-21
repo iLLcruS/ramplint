@@ -6,6 +6,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-21
+
 ### Added
 
 - `-o` / `--output FILE` writes the report to a file and prints a one-line
@@ -18,11 +20,18 @@ and the project uses [Semantic Versioning](https://semver.org/).
   ready-to-copy workflow in the README (#11).
 - `--statistics` shows the number of problems per rule, most frequent first,
   as text or JSON (#12).
+- A documentation page for every rule in `docs/rules/`, with examples, WCAG
+  references and suppression options; `ramplint --explain RL101` shows it in
+  the terminal (#13).
 
 ### Changed
 
 - Output formats live in a small registry, so a new format is a single
   decorated function (#8).
+
+### Fixed
+
+- `--list-rules` columns stay aligned for long rule names.
 
 ## [0.2.1] - 2026-10-21
 
@@ -70,7 +79,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Configuration via `[tool.ramplint]` in `pyproject.toml`.
 - pre-commit hook.
 
-[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.2.1...HEAD
+[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/iLLcruS/ramplint/compare/0.2.1...0.3.0
 [0.2.1]: https://github.com/iLLcruS/ramplint/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/iLLcruS/ramplint/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/iLLcruS/ramplint/releases/tag/0.1.0

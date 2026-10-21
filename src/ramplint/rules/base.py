@@ -19,11 +19,11 @@ class Rule:
 
     @property
     def docs_url(self) -> str:
-        """Where the rule is explained (the rule's section in the README)."""
-        return f"{DOCS_BASE_URL}#{self.code.lower()}-{self.name}"
+        """The rule's documentation page on GitHub."""
+        return f"{DOCS_BASE_URL}/{self.code}.md"
 
 
-DOCS_BASE_URL = "https://github.com/iLLcruS/ramplint"
+DOCS_BASE_URL = "https://github.com/iLLcruS/ramplint/blob/main/docs/rules"
 
 REGISTRY: dict[str, Rule] = {}
 

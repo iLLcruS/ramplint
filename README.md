@@ -77,6 +77,7 @@ ramplint --statistics          # problems per rule, most frequent first
 ramplint -o report.json --format json  # save the report to a file
 ramplint -o a11y-report.html --format html  # shareable HTML report
 ramplint --list-rules
+ramplint --explain RL303        # what a rule checks and how to fix it
 ```
 
 By default ramplint looks at `.html`, `.htm`, `.jinja`, `.jinja2`, `.j2` and
@@ -145,20 +146,24 @@ It works with `--format text` (default) and `--format json`.
 
 | Code    | Name            | What it checks                                                                           | WCAG             |
 |---------|-----------------|------------------------------------------------------------------------------------------|------------------|
-| `RL101` | `img-alt`       | `<img>` has an `alt` attribute; `<input type="image">` and `<area>` have non-empty `alt` | 1.1.1 (A)        |
-| `RL102` | `iframe-title`  | `<iframe>` has a `title` describing its content                                          | 4.1.2 (A)        |
-| `RL201` | `table-header`  | Data tables use real `<th>` header cells                                                 | 1.3.1 (A)        |
-| `RL301` | `heading-order` | Heading levels do not skip (`<h2>` → `<h4>`)                                             | 1.3.1 (A)        |
-| `RL302` | `empty-heading` | Headings are not empty                                                                   | 2.4.6 (AA)       |
-| `RL303` | `duplicate-id`  | `id` values are unique (same id in `{% if %}` / `{% else %}` branches is allowed)        | 1.3.1 (A)        |
-| `RL401` | `form-label`    | `<input>`, `<select>` and `<textarea>` have an associated `<label>`                      | 1.3.1, 4.1.2 (A) |
-| `RL402` | `autocomplete-valid` | `autocomplete` uses valid autofill tokens (catches typos like `emial`)              | 1.3.5 (AA)       |
-| `RL501` | `button-name`   | Buttons (including icon-only buttons) have an accessible name                            | 4.1.2 (A)        |
-| `RL502` | `link-name`     | Links have an accessible name                                                            | 2.4.4, 4.1.2 (A) |
-| `RL503` | `no-positive-tabindex` | `tabindex` is not greater than `0`                                                | 2.4.3 (A)        |
-| `RL504` | `anchor-is-valid` | Links have a real target (no `href="#"`, `javascript:` or click-only `<a>`)        | 2.1.1 (A)        |
-| `RL601` | `html-lang`     | `<html>` declares the page language                                                      | 3.1.1 (A)        |
-| `RL602` | `viewport-zoom` | `<meta name="viewport">` does not disable zoom (`user-scalable=no`, `maximum-scale` < 2) | 1.4.4 (AA)       |
+| [`RL101`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL101.md) | `img-alt`       | `<img>` has an `alt` attribute; `<input type="image">` and `<area>` have non-empty `alt` | 1.1.1 (A)        |
+| [`RL102`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL102.md) | `iframe-title`  | `<iframe>` has a `title` describing its content                                          | 4.1.2 (A)        |
+| [`RL201`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL201.md) | `table-header`  | Data tables use real `<th>` header cells                                                 | 1.3.1 (A)        |
+| [`RL301`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL301.md) | `heading-order` | Heading levels do not skip (`<h2>` → `<h4>`)                                             | 1.3.1 (A)        |
+| [`RL302`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL302.md) | `empty-heading` | Headings are not empty                                                                   | 2.4.6 (AA)       |
+| [`RL303`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL303.md) | `duplicate-id`  | `id` values are unique (same id in `{% if %}` / `{% else %}` branches is allowed)        | 1.3.1 (A)        |
+| [`RL401`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL401.md) | `form-label`    | `<input>`, `<select>` and `<textarea>` have an associated `<label>`                      | 1.3.1, 4.1.2 (A) |
+| [`RL402`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL402.md) | `autocomplete-valid` | `autocomplete` uses valid autofill tokens (catches typos like `emial`)              | 1.3.5 (AA)       |
+| [`RL501`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL501.md) | `button-name`   | Buttons (including icon-only buttons) have an accessible name                            | 4.1.2 (A)        |
+| [`RL502`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL502.md) | `link-name`     | Links have an accessible name                                                            | 2.4.4, 4.1.2 (A) |
+| [`RL503`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL503.md) | `no-positive-tabindex` | `tabindex` is not greater than `0`                                                | 2.4.3 (A)        |
+| [`RL504`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL504.md) | `anchor-is-valid` | Links have a real target (no `href="#"`, `javascript:` or click-only `<a>`)        | 2.1.1 (A)        |
+| [`RL601`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL601.md) | `html-lang`     | `<html>` declares the page language                                                      | 3.1.1 (A)        |
+| [`RL602`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL602.md) | `viewport-zoom` | `<meta name="viewport">` does not disable zoom (`user-scalable=no`, `maximum-scale` < 2) | 1.4.4 (AA)       |
+
+Every rule has its own page with examples and the reasoning behind it: see
+[docs/rules](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/README.md),
+or run `ramplint --explain RL101` in the terminal.
 
 <details>
 <summary><strong>Examples for every rule</strong></summary>
@@ -352,7 +357,7 @@ extensions = [".html", ".txt"]
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/iLLcruS/ramplint
-    rev: 0.2.1
+    rev: 0.3.0
     hooks:
       - id: ramplint
 ```

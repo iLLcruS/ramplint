@@ -39,7 +39,7 @@ def test_driver_describes_every_rule():
     assert [r["id"] for r in driver["rules"]] == [r.code for r in all_rules()]
     img_alt = next(r for r in driver["rules"] if r["id"] == "RL101")
     assert img_alt["name"] == "img-alt"
-    assert img_alt["helpUri"].endswith("#rl101-img-alt")
+    assert img_alt["helpUri"].endswith("/docs/rules/RL101.md")
     assert "accessibility" in img_alt["properties"]["tags"]
 
 

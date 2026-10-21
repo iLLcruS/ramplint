@@ -46,4 +46,6 @@ snippet that reproduces the problem and the output of `ramplint --version`.
    (`{% include %}`, `{{ widget.attrs }}`, ...), stay quiet. A linter people
    trust beats a linter people disable.
 4. Add tests for both failing and passing snippets in `tests/test_rules.py`.
-5. Document the rule in the README rules table and in `CHANGELOG.md`.
+5. Add `docs/rules/RLxxx.md` (copy an existing page) and document the rule in
+   the README rules table and in `CHANGELOG.md`. Tests check that every rule
+   has a page and that its examples behave as described.
