@@ -9,7 +9,7 @@ from pathlib import Path
 from ramplint import __version__
 from ramplint.config import ConfigError, load_config
 from ramplint.linter import DEFAULT_EXTENSIONS, Violation, iter_template_files, lint_file
-from ramplint.reporters import report_github, report_json, report_text
+from ramplint.reporters import REPORTERS, available_formats, summary_line
 from ramplint.rules import all_rules, select_rules, unknown_selectors
 
 EXIT_OK = 0
@@ -53,9 +53,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--format",
-        choices=("text", "json", "github"),
+        choices=available_formats(),
         default=None,
         help="output format (default: text, or github when running in GitHub Actions)",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        metavar="FILE",
+        help="write the report to FILE instead of stdout (missing folders are created)",
     )
     parser.add_argument("--config", type=Path, metavar="PATH", help="path to a pyproject.toml")
     parser.add_argument("--no-color", action="store_true", help="disable colored output")
@@ -86,6 +93,20 @@ def _silence_stdout() -> None:
         os.dup2(devnull, sys.stdout.fileno())
     except (OSError, ValueError):
         pass
+
+
+def _write_report_file(
+    path: Path, output_format: str, violations: list[Violation], files_checked: int
+) -> bool:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="\n") as fh:
+            REPORTERS[output_format].write(violations, files_checked, fh, False)
+    except OSError as exc:
+        print(f"ramplint: error: cannot write report to {path}: {exc}", file=sys.stderr)
+        return False
+    print(f"{summary_line(violations, files_checked)} {output_format} report written to {path}")
+    return True
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -123,21 +144,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"ramplint: error: no such file or directory: {exc}", file=sys.stderr)
         return EXIT_ERROR
 
-    output_format = args.format or (
-        "github" if os.environ.get("GITHUB_ACTIONS") == "true" else "text"
-    )
-    try:
-        if output_format == "json":
-            report_json(violations, files_checked, sys.stdout)
-        elif output_format == "github":
-            report_github(violations, files_checked, sys.stdout)
-        else:
-            report_text(violations, files_checked, sys.stdout, color=_use_color(args.no_color))
-        sys.stdout.flush()
-    except BrokenPipeError:
-        # The reader went away (e.g. `ramplint | head`). Silence the error that
-        # Python would print while flushing stdout on exit.
-        _silence_stdout()
+    if args.output is not None:
+        # Annotations only make sense on stdout, so a file defaults to text.
+        output_format = args.format or "text"
+        if not _write_report_file(args.output, output_format, violations, files_checked):
+            return EXIT_ERROR
+    else:
+        output_format = args.format or (
+            "github" if os.environ.get("GITHUB_ACTIONS") == "true" else "text"
+        )
+        try:
+            REPORTERS[output_format].write(
+                violations, files_checked, sys.stdout, _use_color(args.no_color)
+            )
+            sys.stdout.flush()
+        except BrokenPipeError:
+            # The reader went away (e.g. `ramplint | head`). Silence the error that
+            # Python would print while flushing stdout on exit.
+            _silence_stdout()
 
     if violations and not args.exit_zero:
         return EXIT_VIOLATIONS

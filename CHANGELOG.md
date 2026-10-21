@@ -6,6 +6,16 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `-o` / `--output FILE` writes the report to a file and prints a one-line
+  summary (#8).
+
+### Changed
+
+- Output formats live in a small registry, so a new format is a single
+  decorated function (#8).
+
 ## [0.2.1] - 2026-10-21
 
 ### Fixed

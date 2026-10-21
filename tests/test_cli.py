@@ -148,3 +148,72 @@ def test_closed_pipe_does_not_print_traceback(tmp_path):
     proc.wait(timeout=30)
     assert "Traceback" not in stderr
     assert "BrokenPipeError" not in stderr
+
+
+# --------------------------------------------------------------------------
+# --output and the reporter registry (#8)
+# --------------------------------------------------------------------------
+
+
+def test_output_writes_file_and_prints_summary(project, capsys):
+    code = main(["--format", "json", "--output", "report.json"])
+    assert code == EXIT_VIOLATIONS  # exit code still reflects the problems
+    out = capsys.readouterr().out
+    assert out.strip() == ("Found 2 problems in 1 of 2 files. json report written to report.json")
+    data = json.loads((project / "report.json").read_text())
+    assert [v["code"] for v in data["violations"]] == ["RL101", "RL502"]
+
+
+def test_output_creates_missing_folders(project, capsys):
+    assert main(["-o", "reports/a11y/latest.txt"]) == EXIT_VIOLATIONS
+    assert (project / "reports" / "a11y" / "latest.txt").is_file()
+
+
+def test_output_file_has_no_colors(project, capsys, monkeypatch):
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    main(["-o", "report.txt"])
+    text = (project / "report.txt").read_text()
+    assert "\033[" not in text
+    assert "templates/shop/bad.html:1:1: RL101" in text
+
+
+def test_output_defaults_to_text_even_in_github_actions(project, capsys, monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    main(["-o", "report.txt"])
+    assert "::error" not in (project / "report.txt").read_text()
+
+
+def test_output_clean_run(project, capsys):
+    assert main(["templates/good.html", "-o", "ok.txt"]) == EXIT_OK
+    assert "All checks passed (1 file)." in capsys.readouterr().out
+
+
+def test_output_unwritable_path(project, capsys):
+    (project / "taken").mkdir()
+    assert main(["-o", "taken"]) == EXIT_ERROR
+    assert "cannot write report" in capsys.readouterr().err
+
+
+def test_format_choices_come_from_registry(capsys):
+    from ramplint.reporters import available_formats
+
+    with pytest.raises(SystemExit):
+        main(["--help"])
+    help_text = capsys.readouterr().out
+    for name in available_formats():
+        assert name in help_text
+
+
+def test_registering_a_reporter():
+    from ramplint.reporters import REPORTERS, reporter
+
+    @reporter("count-only", "Just the number of problems")
+    def report_count(violations, files_checked, out, color=False):
+        out.write(f"{len(violations)}\n")
+
+    try:
+        assert REPORTERS["count-only"].write is report_count
+        with pytest.raises(ValueError):
+            reporter("count-only", "duplicate")(report_count)
+    finally:
+        del REPORTERS["count-only"]

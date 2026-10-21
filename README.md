@@ -73,12 +73,24 @@ ramplint templates/ shop/templates/base.html
 ramplint --select RL1,RL5       # only image and control rules
 ramplint --ignore heading-order # rules can be referenced by code or name
 ramplint --format json          # machine-readable output
+ramplint -o report.json --format json  # save the report to a file
 ramplint --list-rules
 ```
 
 By default ramplint looks at `.html`, `.htm`, `.jinja`, `.jinja2`, `.j2` and
 `.djhtml` files and skips folders such as `node_modules`, `.venv`, `build` and `dist`.
 Files passed explicitly are always checked, whatever their extension.
+
+### Output formats
+
+| Format   | Use it for                                                       |
+|----------|------------------------------------------------------------------|
+| `text`   | Reading in the terminal (default; colored when it is a terminal) |
+| `json`   | Scripts, dashboards and other tools                              |
+| `github` | Annotations in GitHub pull requests (default inside Actions)     |
+
+`--output FILE` writes the report to a file and prints a one-line summary
+instead. Missing folders are created, and colors are never written to files.
 
 | Exit code | Meaning                      |
 |-----------|------------------------------|
