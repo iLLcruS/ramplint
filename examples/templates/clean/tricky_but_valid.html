@@ -70,6 +70,14 @@
 <div id="dialog" tabindex="-1">{{ dialog_content }}</div>
 <a href="{% url 'cart' %}" tabindex="{{ cart_tabindex }}">{% trans "Cart" %}</a>
 
+{# ARIA: valid roles, states and references; hidden content that cannot be focused. #}
+<div role="dialog" aria-modal="true" aria-labelledby="sort-title">
+  <h3 id="sort-title">{% trans "Sort" %}</h3>
+  <div role="switch" tabindex="0" aria-checked="{{ in_stock|yesno:'true,false' }}">{% trans "In stock only" %}</div>
+  <div role="{{ widget_role }}">{{ widget }}</div>
+</div>
+<div class="carousel-clone" aria-hidden="true"><a href="{% url 'catalog:index' %}" tabindex="-1">{% trans "All products" %}</a></div>
+
 {# Frames: title from a variable, and a hidden tracking frame. #}
 <iframe src="{{ video.embed_url }}" title="{{ video.title }}"></iframe>
 <iframe src="https://example.com/pixel" aria-hidden="true" tabindex="-1"></iframe>

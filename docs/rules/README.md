@@ -16,3 +16,8 @@
 | [RL504](RL504.md) | `anchor-is-valid` | Links must point somewhere; use &lt;button> for actions. |
 | [RL601](RL601.md) | `html-lang` | The &lt;html> element must declare the page language. |
 | [RL602](RL602.md) | `viewport-zoom` | The viewport meta tag must not disable zooming. |
+| [RL701](RL701.md) | `aria-role` | role values must be valid, non-abstract WAI-ARIA roles. |
+| [RL702](RL702.md) | `aria-valid-attr` | aria-* attributes must exist in WAI-ARIA. |
+| [RL703](RL703.md) | `aria-valid-attr-value` | ARIA attribute values must match the attribute's type. |
+| [RL704](RL704.md) | `aria-required-attr` | Elements with a role must have the ARIA attributes that role requires. |
+| [RL705](RL705.md) | `aria-hidden-focus` | Content with aria-hidden="true" must not be focusable. |

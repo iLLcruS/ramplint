@@ -58,6 +58,7 @@ snippet that reproduces the problem and the output of `ramplint --version`.
    | `RL4xx` | Forms                       |
    | `RL5xx` | Interactive controls        |
    | `RL6xx` | Document-level              |
+   | `RL7xx` | WAI-ARIA                    |
 
 2. Add a function decorated with `@rule(...)` in `src/ramplint/rules/`. It
    receives the parsed tree and yields `(node, message)` pairs. Import new
