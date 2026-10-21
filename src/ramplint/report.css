@@ -1,0 +1,121 @@
+/* Styles for the HTML report (--format html). Inlined into the page. */
+:root {
+  color-scheme: light dark;
+  --page: #f3f5f9;
+  --panel: #ffffff;
+  --ink: #142036;
+  --muted: #4d5b75;
+  --line: #d5dbe6;
+  --sign: #1f4e9a;
+  --sign-ink: #ffffff;
+  --issue: #9a4a00;
+  --issue-soft: #fff1df;
+  --focus: #f2b134;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #0e1626;
+    --panel: #152039;
+    --ink: #e6ecf6;
+    --muted: #a7b3c9;
+    --line: #2a3a5c;
+    --sign: #234c94;
+    --sign-ink: #ffffff;
+    --issue: #f4b765;
+    --issue-soft: #3a2a14;
+    --focus: #f2b134;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 16px/1.55 var(--sans);
+}
+a { color: inherit; }
+a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+
+/* The sign: the report's one loud element. */
+.sign { background: var(--sign); color: var(--sign-ink); padding: 40px 0 36px; }
+.sign h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  line-height: 1.1;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+.sign .meta { margin: 10px 0 0; opacity: 0.85; font-size: 0.95rem; }
+.figures {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 28px 0 0;
+  padding: 0;
+  border-top: 2px solid rgba(255, 255, 255, 0.35);
+}
+.figures div { padding: 14px 32px 0 0; margin-right: 32px; }
+.figures div + div { border-left: 2px solid rgba(255, 255, 255, 0.35); padding-left: 32px; }
+.figures dt { font-size: 0.9rem; opacity: 0.85; }
+.figures dd { margin: 0; font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+main.wrap { padding-top: 32px; padding-bottom: 64px; }
+h2 { font-size: 1.25rem; margin: 0 0 12px; }
+.overview { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 40px; }
+@media (max-width: 760px) { .overview { grid-template-columns: 1fr; } }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 20px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+caption { text-align: left; color: var(--muted); padding-bottom: 8px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+thead th { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.files { list-style: none; margin: 0; padding: 0; }
+.files li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.files li:last-child { border-bottom: 0; }
+.files a { font-family: var(--mono); font-size: 0.9rem; word-break: break-all; }
+.count { color: var(--issue); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.file { margin-top: 28px; }
+.file h2 { font-family: var(--mono); font-size: 1rem; font-weight: 600; word-break: break-all; }
+.file h2 .count { font-family: var(--sans); font-size: 0.9rem; margin-left: 8px; }
+.loc { font-family: var(--mono); white-space: nowrap; color: var(--muted); }
+.code {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  background: var(--issue-soft);
+  color: var(--issue);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.rule-name { display: block; color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.problems { table-layout: fixed; }
+.problems .col-loc { width: 5.5rem; }
+.problems .col-rule { width: 11rem; }
+.message code { font-family: var(--mono); font-size: 0.88em; }
+
+.clean { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 28px; font-size: 1.1rem; }
+footer.wrap { color: var(--muted); font-size: 0.85rem; padding-bottom: 40px; }
+@media (max-width: 640px) {
+  .figures div, .figures div + div { border-left: 0; padding-left: 0; margin-right: 24px; }
+  .loc { white-space: normal; }
+  .what { display: none; }
+  /* Problem tables become stacked rows on narrow screens. */
+  .problems, .problems tbody, .problems tr, .problems td, .problems th { display: block; width: auto; }
+  .problems thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .problems colgroup { display: none; }
+  .problems tr { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .problems tbody tr:last-child { border-bottom: 0; }
+  .problems td, .problems th { border: 0; padding: 2px 0; }
+  .problems .loc, .problems th { display: inline-block; margin-right: 10px; }
+  .problems .rule-name { display: inline; margin-left: 6px; }
+}
+@media print {
+  .sign { background: none; color: #000; border-bottom: 3px solid #000; }
+  .box, .clean { border-color: #999; }
+}

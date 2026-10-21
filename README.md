@@ -74,6 +74,7 @@ ramplint --select RL1,RL5       # only image and control rules
 ramplint --ignore heading-order # rules can be referenced by code or name
 ramplint --format json          # machine-readable output
 ramplint -o report.json --format json  # save the report to a file
+ramplint -o a11y-report.html --format html  # shareable HTML report
 ramplint --list-rules
 ```
 
@@ -88,9 +89,18 @@ Files passed explicitly are always checked, whatever their extension.
 | `text`   | Reading in the terminal (default; colored when it is a terminal) |
 | `json`   | Scripts, dashboards and other tools                              |
 | `github` | Annotations in GitHub pull requests (default inside Actions)     |
+| `html`   | A single self-contained page to share with your team or a client |
 
 `--output FILE` writes the report to a file and prints a one-line summary
 instead. Missing folders are created, and colors are never written to files.
+
+The HTML report needs no internet connection, so it can be attached to an email
+or stored as a CI artifact. It follows the light or dark theme of the viewer's
+system, and it passes ramplint itself.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/iLLcruS/ramplint/main/docs/html-report.png" alt="HTML report: a blue header with 32 problems in 6 templates, a table of problems by rule and a list of templates with problems" width="800">
+</p>
 
 | Exit code | Meaning                      |
 |-----------|------------------------------|

@@ -217,3 +217,10 @@ def test_registering_a_reporter():
             reporter("count-only", "duplicate")(report_count)
     finally:
         del REPORTERS["count-only"]
+
+
+def test_html_output(project, capsys):
+    assert main(["--format", "html", "-o", "report.html"]) == EXIT_VIOLATIONS
+    html = (project / "report.html").read_text()
+    assert html.startswith("<!DOCTYPE html>")
+    assert "2 accessibility problems in 1 template" in html
