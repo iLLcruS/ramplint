@@ -22,6 +22,10 @@
 | [RL505](RL505.md) | `nested-interactive` | Interactive elements must not contain other interactive elements. |
 | [RL601](RL601.md) | `html-lang` | The &lt;html> element must declare the page language. |
 | [RL602](RL602.md) | `viewport-zoom` | The viewport meta tag must not disable zooming. |
+| [RL603](RL603.md) | `document-title` | Pages must have a non-empty &lt;title>. |
+| [RL604](RL604.md) | `valid-lang` | lang values must be valid language tags. |
+| [RL605](RL605.md) | `meta-refresh` | Pages must not refresh or redirect after a delay. |
+| [RL606](RL606.md) | `obsolete-elements` | &lt;marquee> and &lt;blink> must not be used. |
 | [RL701](RL701.md) | `aria-role` | role values must be valid, non-abstract WAI-ARIA roles. |
 | [RL702](RL702.md) | `aria-valid-attr` | aria-* attributes must exist in WAI-ARIA. |
 | [RL703](RL703.md) | `aria-valid-attr-value` | ARIA attribute values must match the attribute's type. |
