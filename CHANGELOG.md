@@ -6,6 +6,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-21
+
 ### Added
 
 - Django forms accessibility:
@@ -241,7 +243,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Configuration via `[tool.ramplint]` in `pyproject.toml`.
 - pre-commit hook.
 
-[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.5.1...HEAD
+[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.6.0...HEAD
+[0.6.0]: https://github.com/iLLcruS/ramplint/compare/0.5.1...0.6.0
 [0.5.1]: https://github.com/iLLcruS/ramplint/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/iLLcruS/ramplint/compare/0.4.1...0.5.0
 [0.4.1]: https://github.com/iLLcruS/ramplint/compare/0.4.0...0.4.1
