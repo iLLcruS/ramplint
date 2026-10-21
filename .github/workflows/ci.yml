@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -15,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - run: pip install ruff
       - run: ruff check .
       - run: ruff format --check .
@@ -26,18 +30,76 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         include:
           - os: windows-latest
-            python-version: "3.12"
+            python-version: "3.13"
           - os: macos-latest
-            python-version: "3.12"
+            python-version: "3.13"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
+      # Fails below the coverage threshold set in pyproject.toml.
       - run: pytest --cov --cov-report=term-missing
       - name: Smoke test the CLI
         run: ramplint examples --exit-zero
+
+  package:
+    # Build exactly what would be published and use it like a user would.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install build twine
+      - name: Build sdist and wheel
+        run: python -m build
+      - name: Check PyPI metadata and README rendering
+        run: twine check --strict dist/*
+      - name: Check package contents
+        run: python scripts/check_dist.py dist
+      - name: Install the wheel in a clean environment
+        run: |
+          python -m venv /tmp/venv
+          /tmp/venv/bin/pip install dist/*.whl
+      - name: Use the installed package
+        working-directory: /tmp
+        run: |
+          set -euo pipefail
+          EXAMPLES="$GITHUB_WORKSPACE/examples"
+          /tmp/venv/bin/ramplint --version
+          /tmp/venv/bin/ramplint --list-rules
+          /tmp/venv/bin/ramplint --explain RL101 | grep -q "## Why it matters"
+          /tmp/venv/bin/ramplint "$EXAMPLES" --statistics --exit-zero
+          /tmp/venv/bin/ramplint "$EXAMPLES" --format sarif -o report.sarif --exit-zero
+          python -c "import json; json.load(open('report.sarif'))"
+          /tmp/venv/bin/ramplint "$EXAMPLES" --format html -o report.html --exit-zero
+          grep -q "prefers-color-scheme" report.html
+          # The HTML report must pass ramplint itself.
+          /tmp/venv/bin/ramplint report.html
+          # The demo must find problems (exit code 1).
+          if /tmp/venv/bin/ramplint "$EXAMPLES" > /dev/null; then
+            echo "::error::ramplint found no problems in the demo templates"
+            exit 1
+          fi
+
+  pre-commit-hook:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install pre-commit
+      - name: Hook passes on a clean template
+        run: pre-commit try-repo . ramplint --files examples/templates/orders/list_fixed.html
+      - name: Hook fails on a broken template
+        run: |
+          if pre-commit try-repo . ramplint --files examples/templates/orders/list.html; then
+            echo "::error::the pre-commit hook did not report problems"
+            exit 1
+          fi

@@ -6,6 +6,21 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-21
+
+### Added
+
+- Python 3.14 is tested and supported.
+
+### Changed
+
+- Every pull request now builds the package, checks its PyPI metadata and
+  contents, installs the wheel in a clean environment and runs the CLI from
+  it, and tests the pre-commit hook.
+- Releases are published only if the tag matches the package version and the
+  tests, package checks and a smoke test of the wheel pass.
+- Test coverage must stay at 95% or higher.
+
 ## [0.3.0] - 2026-10-21
 
 ### Added
@@ -79,7 +94,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Configuration via `[tool.ramplint]` in `pyproject.toml`.
 - pre-commit hook.
 
-[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.3.0...HEAD
+[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.3.1...HEAD
+[0.3.1]: https://github.com/iLLcruS/ramplint/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/iLLcruS/ramplint/compare/0.2.1...0.3.0
 [0.2.1]: https://github.com/iLLcruS/ramplint/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/iLLcruS/ramplint/compare/0.1.0...0.2.0

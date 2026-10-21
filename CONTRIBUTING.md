@@ -21,6 +21,26 @@ ruff format .
 pytest --cov
 ```
 
+## Continuous integration
+
+Every pull request runs:
+
+| Job               | What it checks                                                        |
+|-------------------|-----------------------------------------------------------------------|
+| `lint`            | `ruff check` and `ruff format --check`                                |
+| `test`            | The test suite on Python 3.10–3.14 (Linux) and on Windows and macOS, with at least 95% coverage |
+| `package`         | Builds the sdist and wheel, `twine check`, `scripts/check_dist.py`, installs the wheel in a clean environment and runs the CLI from it |
+| `pre-commit-hook` | The hook passes on a clean template and fails on a broken one         |
+
+To check the package locally:
+
+```bash
+pip install build twine
+python -m build
+twine check --strict dist/*
+python scripts/check_dist.py dist
+```
+
 ## Reporting false positives
 
 False positives are bugs. Please open an issue with the smallest template
