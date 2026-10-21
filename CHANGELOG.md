@@ -6,6 +6,16 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- WAI-ARIA rules:
+  - `RL701` aria-role: unknown and abstract roles, with "did you mean" suggestions (#38).
+  - `RL702` aria-valid-attr: misspelled `aria-*` attributes (#39).
+  - `RL703` aria-valid-attr-value: invalid values and `aria-labelledby` /
+    `aria-describedby` that reference missing ids (#40).
+  - `RL704` aria-required-attr: roles without the states they require (#41).
+  - `RL705` aria-hidden-focus: focusable content inside `aria-hidden="true"` (#42).
+
 ## [0.3.1] - 2026-10-21
 
 ### Added

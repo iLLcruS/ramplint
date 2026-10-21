@@ -1,0 +1,14 @@
+{% load i18n %}
+<div role="dailog" aria-modal="true" aria-labelledby="filters-title">
+  <h2 id="filters-title">{% trans "Filters" %}</h2>
+  <div class="backdrop" aria-hidden="yes"></div>
+
+  <section aria-labeledby="price-title">
+    <h3 id="price-title">{% trans "Price" %}</h3>
+    <div role="switch" tabindex="0">{% trans "In stock only" %}</div>
+  </section>
+
+  <div class="carousel-clone" aria-hidden="true">
+    <a href="{% url 'catalog:index' %}">{% trans "All products" %}</a>
+  </div>
+</div>

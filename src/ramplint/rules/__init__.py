@@ -9,6 +9,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from ramplint.rules import (  # noqa: F401
+    aria,
     controls,
     document,
     embeds,

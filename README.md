@@ -46,7 +46,7 @@ examples/templates/accounts/login.html:10:3: RL401 <input type="text"> has no as
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 32 problems in 6 of 8 files.
+Found 37 problems in 7 of 9 files.
 ```
 
 See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/examples/README.md) for what each demo template contains.
@@ -130,8 +130,13 @@ $ ramplint examples/ --statistics
 1  RL504  anchor-is-valid
 1  RL601  html-lang
 1  RL602  viewport-zoom
+1  RL701  aria-role
+1  RL702  aria-valid-attr
+1  RL703  aria-valid-attr-value
+1  RL704  aria-required-attr
+1  RL705  aria-hidden-focus
 
-Found 32 problems in 6 of 8 files.
+Found 37 problems in 7 of 9 files.
 ```
 
 It works with `--format text` (default) and `--format json`.
@@ -160,6 +165,11 @@ It works with `--format text` (default) and `--format json`.
 | [`RL504`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL504.md) | `anchor-is-valid` | Links have a real target (no `href="#"`, `javascript:` or click-only `<a>`)        | 2.1.1 (A)        |
 | [`RL601`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL601.md) | `html-lang`     | `<html>` declares the page language                                                      | 3.1.1 (A)        |
 | [`RL602`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL602.md) | `viewport-zoom` | `<meta name="viewport">` does not disable zoom (`user-scalable=no`, `maximum-scale` < 2) | 1.4.4 (AA)       |
+| [`RL701`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL701.md) | `aria-role` | `role` is a real, non-abstract WAI-ARIA role (catches typos like `dailog`) | 4.1.2 (A) |
+| [`RL702`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL702.md) | `aria-valid-attr` | `aria-*` attributes exist (catches `aria-lable`, `aria-labeledby`) | 4.1.2 (A) |
+| [`RL703`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL703.md) | `aria-valid-attr-value` | ARIA values match their type (`aria-hidden="yes"`, missing `aria-labelledby` ids) | 4.1.2 (A) |
+| [`RL704`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL704.md) | `aria-required-attr` | Roles have their required states (`role="switch"` needs `aria-checked`) | 4.1.2 (A) |
+| [`RL705`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL705.md) | `aria-hidden-focus` | Nothing focusable inside `aria-hidden="true"` | 4.1.2 (A) |
 
 Every rule has its own page with examples and the reasoning behind it: see
 [docs/rules](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/README.md),
@@ -307,6 +317,18 @@ order (no `href`) or does not react to the Space key like a button would.
 ```
 
 Low-vision users rely on pinch-to-zoom; WCAG requires text to be resizable up to 200%.
+
+#### RL701–RL705: ARIA
+
+```django
+{# ✗ #} <div role="dailog" aria-modal="true">…</div>
+{# ✗ #} <button aria-lable="Close">×</button>
+{# ✗ #} <div class="backdrop" aria-hidden="yes"></div>
+{# ✗ #} <div role="switch" tabindex="0">Dark mode</div>
+{# ✗ #} <div aria-hidden="true"><a href="/">Home</a></div>
+{# ✓ #} <div role="switch" tabindex="0" aria-checked="false">Dark mode</div>
+{# ✓ #} <div aria-hidden="true"><a href="/" tabindex="-1">Home</a></div>
+```
 
 </details>
 
