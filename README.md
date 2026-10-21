@@ -9,7 +9,7 @@
   <a href="https://github.com/iLLcruS/ramplint/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/iLLcruS/ramplint/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://pypi.org/project/ramplint/"><img alt="PyPI" src="https://img.shields.io/pypi/v/ramplint.svg"></a>
   <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
+  <a href="https://github.com/iLLcruS/ramplint/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
   <a href="https://ko-fi.com/innerexcept"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-support-72a4f2?logo=ko-fi&logoColor=white"></a>
 </p>
 
@@ -21,12 +21,12 @@ and browser-based checkers only see the pages you remember to open.
 and reports problems with the exact line and column in the template source:
 
 <p align="center">
-  <img src="docs/demo.svg" alt="Terminal output of ramplint reporting six accessibility problems in a Django product page template">
+  <img src="https://raw.githubusercontent.com/iLLcruS/ramplint/main/docs/demo.svg" alt="Terminal output of ramplint reporting six accessibility problems in a Django product page template">
 </p>
 
 ## Try it in 30 seconds
 
-The repository ships with a small demo shop in [`examples/`](examples/): a
+The repository ships with a small demo shop in [`examples/`](https://github.com/iLLcruS/ramplint/tree/main/examples): a
 deliberately inaccessible set of Django templates that triggers every rule,
 plus a file full of tricky-but-valid template patterns that must stay silent.
 
@@ -49,7 +49,7 @@ examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a
 Found 32 problems in 6 of 8 files.
 ```
 
-See [`examples/README.md`](examples/README.md) for what each demo template contains.
+See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/examples/README.md) for what each demo template contains.
 
 ## Highlights
 
@@ -297,7 +297,7 @@ extensions = [".html", ".txt"]
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/iLLcruS/ramplint
-    rev: 0.2.0
+    rev: 0.2.1
     hooks:
       - id: ramplint
 ```
@@ -339,7 +339,7 @@ tool such as axe.
 ## Contributing
 
 Bug reports, especially about false positives, are very welcome.
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](https://github.com/iLLcruS/ramplint/blob/main/CONTRIBUTING.md).
 
 ## Feedback and support
 
@@ -354,4 +354,4 @@ buy me a coffee:
 
 ## License
 
-[MIT](LICENSE) © Vladyslav Rostovskyi
+[MIT](https://github.com/iLLcruS/ramplint/blob/main/LICENSE) © Vladyslav Rostovskyi

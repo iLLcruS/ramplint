@@ -6,6 +6,14 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-21
+
+### Fixed
+
+- Images and links in the project description on PyPI (the README used
+  relative paths that only work on GitHub).
+- `ramplint ... | head` no longer prints a `BrokenPipeError` traceback.
+
 ## [0.2.0] - 2026-10-21
 
 ### Added
@@ -44,6 +52,7 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Configuration via `[tool.ramplint]` in `pyproject.toml`.
 - pre-commit hook.
 
-[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.2.1...HEAD
+[0.2.1]: https://github.com/iLLcruS/ramplint/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/iLLcruS/ramplint/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/iLLcruS/ramplint/releases/tag/0.1.0

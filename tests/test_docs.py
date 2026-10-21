@@ -58,3 +58,14 @@ def test_readme_pre_commit_rev_matches_version():
     from ramplint import __version__
 
     assert f"rev: {__version__}\n" in README
+
+
+def test_readme_links_are_absolute():
+    """PyPI renders the README without the repository files, so relative
+    links and images break there."""
+    prose = re.sub(r"```.*?```", "", README, flags=re.DOTALL)
+    targets = re.findall(r"\]\(([^)\s]+)\)|(?:src|href)=\"([^\"]+)\"", prose)
+    relative = [
+        url for pair in targets for url in pair if url and not re.match(r"(https?:|mailto:|#)", url)
+    ]
+    assert not relative, f"use absolute GitHub URLs in README: {relative}"

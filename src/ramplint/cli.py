@@ -80,6 +80,14 @@ def _use_color(no_color: bool) -> bool:
     return sys.stdout.isatty()
 
 
+def _silence_stdout() -> None:
+    try:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+    except (OSError, ValueError):
+        pass
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -118,12 +126,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     output_format = args.format or (
         "github" if os.environ.get("GITHUB_ACTIONS") == "true" else "text"
     )
-    if output_format == "json":
-        report_json(violations, files_checked, sys.stdout)
-    elif output_format == "github":
-        report_github(violations, files_checked, sys.stdout)
-    else:
-        report_text(violations, files_checked, sys.stdout, color=_use_color(args.no_color))
+    try:
+        if output_format == "json":
+            report_json(violations, files_checked, sys.stdout)
+        elif output_format == "github":
+            report_github(violations, files_checked, sys.stdout)
+        else:
+            report_text(violations, files_checked, sys.stdout, color=_use_color(args.no_color))
+        sys.stdout.flush()
+    except BrokenPipeError:
+        # The reader went away (e.g. `ramplint | head`). Silence the error that
+        # Python would print while flushing stdout on exit.
+        _silence_stdout()
 
     if violations and not args.exit_zero:
         return EXIT_VIOLATIONS

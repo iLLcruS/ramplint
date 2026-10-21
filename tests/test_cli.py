@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -127,3 +128,23 @@ def test_examples_directory(capsys, monkeypatch):
     # The demo covers every rule.
     all_codes = {code for codes in by_file.values() for code in codes}
     assert all_codes == {rule.code for rule in all_rules()}
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX pipe semantics")
+def test_closed_pipe_does_not_print_traceback(tmp_path):
+    import subprocess
+
+    template = tmp_path / "many.html"
+    template.write_text('<img src="a.png">\n' * 5000)
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "ramplint", str(template), "--no-color"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert proc.stdout is not None and proc.stderr is not None
+    proc.stdout.readline()
+    proc.stdout.close()  # like `| head -1`
+    stderr = proc.stderr.read().decode()
+    proc.wait(timeout=30)
+    assert "Traceback" not in stderr
+    assert "BrokenPipeError" not in stderr
