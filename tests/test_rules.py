@@ -587,6 +587,37 @@ def test_autocomplete_suggestion():
     assert 'did you mean "email"?' in violation.message
 
 
+@pytest.mark.parametrize(
+    ("value", "suggestion"),
+    [
+        ("emial", "email"),
+        ("stret-address", "street-address"),
+        ("usrname", "username"),
+        # Common names that are not autofill tokens.
+        ("accountname", "username"),
+        ("first_name", "given-name"),
+        ("lastName", "family-name"),
+        ("zip", "postal-code"),
+        ("phone", "tel"),
+        ("e-mail", "email"),
+        ("pasword", "current-password"),
+    ],
+)
+def test_autocomplete_suggestions(value, suggestion):
+    from ramplint import lint_source, select_rules
+
+    [violation] = lint_source(f'<input autocomplete="{value}">', rules=select_rules(["RL402"]))
+    assert violation.message.endswith(f'did you mean "{suggestion}"?')
+
+
+def test_autocomplete_no_far_fetched_suggestion():
+    from ramplint import lint_source, select_rules
+
+    [violation] = lint_source('<input autocomplete="qwerty">', rules=select_rules(["RL402"]))
+    assert "did you mean" not in violation.message
+    assert violation.message.endswith('use "off" to disable autofill')
+
+
 def test_autocomplete_on_select_textarea_and_form(lint):
     assert lint('<select autocomplete="contry"></select>', "RL402") == [("RL402", 1)]
     assert lint('<textarea autocomplete="street-adress"></textarea>', "RL402") == [("RL402", 1)]

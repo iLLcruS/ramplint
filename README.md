@@ -332,8 +332,11 @@ A partial whose top level is `<li>` items (included into a list elsewhere) is fi
 
 ```django
 {# ✗ #} <dl><span class="row"><dt>Weight</dt><dd>{{ p.weight }}</dd></span></dl>
+{# ✗ #} <dl><dt>Weight</dt><div><dd>{{ p.weight }}</dd></div></dl>
 {# ✓ #} <dl><div class="row"><dt>Weight</dt><dd>{{ p.weight }}</dd></div></dl>
 ```
+
+Every `<dt>` needs a `<dd>` after it, and every `<dd>` a `<dt>` before it.
 
 #### RL306 `landmark-one-main`
 
@@ -369,7 +372,8 @@ widgets whose attributes are rendered dynamically (`<input {{ widget.attrs }}>`)
 
 A typo in `autocomplete` silently breaks autofill and password managers.
 ramplint validates the full token grammar from the HTML spec and suggests the
-closest valid token.
+token you most likely meant, including for common names such as `zip`
+(`postal-code`) or `phone` (`tel`).
 
 #### RL403 `label-for-target`
 
@@ -554,7 +558,7 @@ extensions = [".html", ".txt"]
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/iLLcruS/ramplint
-    rev: 0.4.0
+    rev: 0.4.1
     hooks:
       - id: ramplint
 ```

@@ -82,7 +82,7 @@ def test_list_structure_reports_every_wrong_child(lint):
     "source",
     [
         "<dl><p>Term</p></dl>",
-        "<dl><dt>Term</dt><span>Description</span></dl>",
+        "<dl><dt>Term</dt><dd>Description</dd><span>Note</span></dl>",
         "<dl><div><p>Term</p></div></dl>",
         "<section><dt>Term</dt></section>",
         '<html lang="en"><body><dd>Description</dd></body></html>',
@@ -112,6 +112,53 @@ def test_definition_list_violations(lint, source):
 )
 def test_definition_list_ok(lint, source):
     assert lint(source, "RL305") == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "<dl><dd>Description without a term</dd></dl>",
+        "<dl><dt>Term without a description</dt></dl>",
+        "<dl><dt>A</dt><dd>a</dd><dt>B</dt></dl>",
+        "<dl><div><dd>Orphaned</dd></div></dl>",
+        "<dl><div><dt>Term</dt></div></dl>",
+        "<dl><dt></dt><dd>Description</dd></dl>",
+        "<dl><dt><i class='icon'></i></dt><dd>Description</dd></dl>",
+        "<dt></dt>",
+    ],
+)
+def test_definition_list_groups(lint, source):
+    assert lint(source, "RL305") == [("RL305", 1)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "<dl><dt>A</dt><dt>B</dt><dd>Shared description</dd><dd>Another one</dd></dl>",
+        "<dl><div><dt>A</dt><dd>a</dd></div><div><dt>B</dt><dd>b</dd></div></dl>",
+        "<dl><script></script><dt>A</dt><template><dd>x</dd></template><dd>a</dd></dl>",
+        "<dl><dt>{{ spec.name }}</dt><dd>{{ spec.value }}</dd></dl>",
+        "<dl><dt>A</dt>{% if a %}<dd>a</dd>{% endif %}</dl>",
+        # Terms or descriptions may be rendered at runtime.
+        '<dl><dt>Price</dt>{% include "price_dd.html" %}</dl>',
+        "<dl><dt>Price</dt>{{ price_html }}</dl>",
+        "<dl><dd {{ attrs }}>a</dd></dl>",
+        "<dl><div {{ attrs }}><dd>a</dd></div></dl>",
+        '<dl><dt aria-hidden="true"></dt><dd>a</dd></dl>',
+        "<dt>{% trans 'Weight' %}</dt>",
+    ],
+)
+def test_definition_list_groups_ok(lint, source):
+    assert lint(source, "RL305") == []
+
+
+def test_definition_list_group_messages(lint):
+    source = "<dl>\n<dt></dt>\n<div><dd>Orphaned</dd></div>\n</dl>"
+    found = messages(source, "RL305")
+    assert lint(source, "RL305") == [("RL305", 2), ("RL305", 2), ("RL305", 3)]
+    assert any(m.startswith("<dt> is empty") for m in found)
+    assert any(m.startswith("<dt> has no <dd> after it") for m in found)
+    assert any(m.startswith("<dd> has no <dt> before it") for m in found)
 
 
 def test_definition_list_messages():

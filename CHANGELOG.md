@@ -6,6 +6,18 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-21
+
+### Fixed
+
+- `RL305` definition-list now reports a `<dd>` without a `<dt>` before it, a
+  `<dt>` without a `<dd>` after it (also inside `<div>` groups) and empty
+  `<dt>` elements.
+- `RL402` autocomplete-valid no longer suggests unrelated tokens
+  (`accountname` → `country-name`). Common non-standard names get the right
+  token: `accountname` → `username`, `zip` → `postal-code`, `phone` → `tel`,
+  `first_name` → `given-name`.
+
 ## [0.4.0] - 2026-10-21
 
 ### Added
@@ -154,7 +166,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Configuration via `[tool.ramplint]` in `pyproject.toml`.
 - pre-commit hook.
 
-[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.4.1...HEAD
+[0.4.1]: https://github.com/iLLcruS/ramplint/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/iLLcruS/ramplint/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/iLLcruS/ramplint/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/iLLcruS/ramplint/compare/0.2.1...0.3.0

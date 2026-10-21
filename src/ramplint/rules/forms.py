@@ -116,6 +116,49 @@ def autocomplete_error(value: str) -> str | None:
     return tokens[i] if i < len(tokens) else None
 
 
+#: Common non-standard values and what the autofill spec calls them.
+# fmt: off
+_AUTOFILL_ALIASES = {
+    "user": "username", "login": "username", "account": "username",
+    "accountname": "username", "userid": "username",
+    "password": "current-password", "pass": "current-password",
+    "pwd": "current-password", "newpassword": "new-password",
+    "mail": "email", "emailaddress": "email",
+    "phone": "tel", "telephone": "tel", "mobile": "tel", "phonenumber": "tel",
+    "mobilephone": "tel", "cellphone": "tel",
+    "firstname": "given-name", "fname": "given-name", "forename": "given-name",
+    "lastname": "family-name", "lname": "family-name", "surname": "family-name",
+    "fullname": "name", "middlename": "additional-name",
+    "zip": "postal-code", "zipcode": "postal-code", "postcode": "postal-code",
+    "postalcode": "postal-code",
+    "address": "street-address", "street": "street-address",
+    "city": "address-level2", "town": "address-level2",
+    "state": "address-level1", "region": "address-level1",
+    "province": "address-level1",
+    "company": "organization", "jobtitle": "organization-title",
+    "birthday": "bday", "birthdate": "bday", "dob": "bday", "dateofbirth": "bday",
+    "gender": "sex", "website": "url",
+    "cardnumber": "cc-number", "creditcard": "cc-number", "ccnumber": "cc-number",
+    "cvv": "cc-csc", "cvc": "cc-csc", "otp": "one-time-code",
+}
+# fmt: on
+
+
+def _autofill_suggestion(token: str) -> str | None:
+    """The valid token the author most likely meant, or None."""
+    normalized = "".join(char for char in token if char.isalnum())
+    if normalized in _AUTOFILL_ALIASES:
+        return _AUTOFILL_ALIASES[normalized]
+    # Typos rarely change the first letter: "emial" -> "email", but not
+    # "accountname" -> "country-name".
+    candidates = [known for known in _ALL_KNOWN if known[:1] == token[:1]]
+    match = difflib.get_close_matches(token, candidates, n=1, cutoff=0.6)
+    if match:
+        return match[0]
+    alias = difflib.get_close_matches(normalized, _AUTOFILL_ALIASES, n=1, cutoff=0.8)
+    return _AUTOFILL_ALIASES[alias[0]] if alias else None
+
+
 @rule(
     code="RL402",
     name="autocomplete-valid",
@@ -136,8 +179,8 @@ def autocomplete_valid(root: Node) -> Iterator[tuple[Node, str]]:
         bad = autocomplete_error(value)
         if bad is None:
             continue
-        suggestion = difflib.get_close_matches(bad, _ALL_KNOWN, n=1, cutoff=0.6)
-        hint = f'did you mean "{suggestion[0]}"?' if suggestion else 'use "off" to disable autofill'
+        suggestion = _autofill_suggestion(bad)
+        hint = f'did you mean "{suggestion}"?' if suggestion else 'use "off" to disable autofill'
         yield (
             node,
             f'autocomplete="{value.strip()}" is not valid: unknown or misplaced token '
