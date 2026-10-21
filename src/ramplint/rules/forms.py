@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import difflib
+import re
+from bisect import bisect_right
 from collections.abc import Iterator
 
 from ramplint.dom import Node
 from ramplint.rules.base import rule
 from ramplint.rules.ids import template_ids
 from ramplint.rules.names import has_naming_attribute
-from ramplint.template import PLACEHOLDERS
+from ramplint.template import PLACEHOLDERS, tokens
 
 #: Input types that are not labelled with <label> (or are not visible).
 UNLABELLED_INPUT_TYPES = frozenset({"hidden", "submit", "button", "reset", "image"})
@@ -224,3 +226,166 @@ def label_for_target(root: Node) -> Iterator[tuple[Node, str]]:
                 f"field has no name and clicking the label does nothing"
                 f"{_for_hint(root, target, ids)}",
             )
+
+
+# --------------------------------------------------------------------------
+# RL404 field-label
+# --------------------------------------------------------------------------
+
+#: ``{{ X.label_tag }}`` and friends render or point to the field's label.
+_LABEL_ATTRS = frozenset({"label_tag", "id_for_label", "auto_id", "as_field_group", "legend_tag"})
+#: django-widget-tweaks filters: they change the widget, it still renders alone.
+_WIDGET_FILTERS = frozenset(
+    {"attr", "add_class", "append_attr", "set_data", "add_error_class", "add_required_class",
+     "remove_attr", "add_error_attr", "set_attr"}
+)  # fmt: skip
+#: Field names that are usually hidden inputs.
+_HIDDEN_NAMES = frozenset({"next", "id", "pk", "token", "uid", "uuid", "redirect", "honeypot"})
+#: Form attributes that are not fields (``{{ form.as_p }}`` renders labels).
+_FORM_ATTRS = frozenset(
+    {"as_p", "as_table", "as_ul", "as_div", "errors", "non_field_errors", "media",
+     "management_form", "hidden_fields", "visible_fields", "empty_form", "prefix",
+     "initial", "data", "instance", "fields", "cleaned_data", "is_bound", "template_name",
+     # Django admin's InlineAdminForm
+     "original", "show_url", "model_admin", "pk_field", "fk_field", "needs_explicit_pk_field"}
+)  # fmt: skip
+_VARIABLE_RE = re.compile(r"^[A-Za-z_]\w*(\.[A-Za-z_]\w*)?$")
+_FOR_RE = re.compile(r"\{%-?\s*for\s+(\w+)\s+in\s+([\w.]+)")
+_RENDER_FIELD_RE = re.compile(r"\{%-?\s*render_field\s+([\w.]+)(.*?)-?%\}", re.DOTALL)
+_IS_HIDDEN_RE = re.compile(r"\b(\w+)\.is_hidden\b")
+_FORM_NAME_RE = re.compile(r"^(\w+_)?form$")
+
+
+def _field_reference(expression: str) -> tuple[str, list[str]] | None:
+    """``form.email|add_class:"x"`` -> ("form.email", ["add_class"])."""
+    variable, *filters = (part.strip() for part in expression.split("|"))
+    if not _VARIABLE_RE.match(variable):
+        return None
+    names = variable.split(".")
+    is_field = (len(names) == 1 and names[0] in ("field", "bound_field")) or (
+        len(names) == 2 and bool(_FORM_NAME_RE.match(names[0]))
+    )
+    if not is_field:
+        return None
+    return variable, [f.split(":")[0].strip() for f in filters]
+
+
+def _loop_variables(source: str) -> tuple[set[str], set[str]]:
+    """Loop variables over form fields, and those that are not form fields."""
+    fields: set[str] = set()
+    others: set[str] = set()
+    for loop_var, iterable in _FOR_RE.findall(source):
+        names = iterable.split(".")
+        over_form = bool(_FORM_NAME_RE.match(names[-1])) or (
+            len(names) >= 2
+            and names[-1] in ("visible_fields", "hidden_fields")
+            and bool(_FORM_NAME_RE.match(names[-2]))
+        )
+        (fields if over_form else others).add(loop_var)
+    return fields, others - fields
+
+
+def _hidden_variables(source: str) -> set[str]:
+    hidden = set(_IS_HIDDEN_RE.findall(source))
+    for loop_var, iterable in _FOR_RE.findall(source):
+        if iterable.endswith("hidden_fields"):
+            hidden.add(loop_var)
+    return hidden
+
+
+def _wrapped_in_label(root: Node, line: int, col: int) -> bool:
+    return any(label.contains(line, col) for label in root.iter("label"))
+
+
+_DISPLAY_NONE_RE = re.compile(r"display\s*:\s*none")
+
+
+#: Elements that hold text, not form controls: ``<h2>{{ form.title }}</h2>``.
+_TEXT_ONLY = frozenset({"h1", "h2", "h3", "h4", "h5", "h6", "title", "option", "a", "button"})
+
+
+def _not_a_control_here(root: Node, line: int, col: int) -> bool:
+    """Inside an element that is never shown (``hidden``, ``display: none``)
+    or that only holds text."""
+    for node in root.iter():
+        if not node.contains(line, col):
+            continue
+        if node.tag in _TEXT_ONLY or "hidden" in node.attrs:
+            return True
+        if _DISPLAY_NONE_RE.search(node.get("style") or ""):
+            return True
+    return False
+
+
+def _inside_tag(source: str, offset: int) -> bool:
+    """``value="{{ form.email }}"``: the variable is part of an attribute."""
+    return source.rfind("<", 0, offset) > source.rfind(">", 0, offset)
+
+
+@rule(
+    code="RL404",
+    name="field-label",
+    summary="Form fields rendered one by one must have their label.",
+    wcag="1.3.1 Info and Relationships (A), 4.1.2 Name, Role, Value (A)",
+)
+def field_label(root: Node) -> Iterator[tuple[Node, str]]:
+    source = root.source
+    if source is None:
+        return
+    template_tokens = tokens(source)
+    labelled: set[str] = set()
+    for token in template_tokens:
+        if token.text.startswith("{{"):
+            expression = token.text[2:-2].strip("- \t\n").split("|")[0].strip()
+            base, _, attr = expression.rpartition(".")
+            if attr in _LABEL_ATTRS:
+                labelled.add(base)
+    # <label for="id_email"> written by hand for {{ form.email }}.
+    for label in root.iter("label"):
+        target = (label.get("for") or "").strip()
+        if target.startswith("id_"):
+            labelled.add(f"*.{target[3:]}")
+    hidden = _hidden_variables(source)
+    field_loops, other_loops = _loop_variables(source)
+    line_starts = [0] + [i + 1 for i, char in enumerate(source) if char == "\n"]
+
+    for token in template_tokens:
+        if token.text.startswith("{{"):
+            reference = _field_reference(token.text[2:-2].strip("- \t\n"))
+            if reference is None or any(f not in _WIDGET_FILTERS for f in reference[1]):
+                continue  # |as_crispy_field and other filters render the label
+            variable, shown = reference[0], f"{{{{ {reference[0]} }}}}"
+        elif token.name == "render_field":
+            match = _RENDER_FIELD_RE.match(token.text)
+            if not match or re.search(r"\baria-label(ledby)?\s*=", match.group(2)):
+                continue
+            variable, shown = match.group(1), f"{{% render_field {match.group(1)} %}}"
+            if _field_reference(variable) is None:
+                continue
+        else:
+            continue
+        names = variable.split(".")
+        field_name = names[-1]
+        if len(names) == 1 and (names[0] in other_loops or names[0] not in field_loops):
+            continue  # {{ field }} that is not known to be a form field
+        if (
+            names[0] in hidden
+            or field_name in _HIDDEN_NAMES
+            or field_name in _FORM_ATTRS
+            or field_name.endswith(("_id", "_token"))
+        ):
+            continue
+        if variable in labelled or f"*.{field_name}" in labelled:
+            continue
+        line = bisect_right(line_starts, token.offset)
+        col = token.offset - line_starts[line - 1] + 1
+        if _inside_tag(source, token.offset):
+            continue
+        if _wrapped_in_label(root, line, col) or _not_a_control_here(root, line, col):
+            continue
+        yield (
+            Node(tag="#field", attrs={}, line=line, col=col),
+            f"{shown} renders only the input, without its <label>; add "
+            f'{{{{ {variable}.label_tag }}}} (or <label for="{{{{ {variable}.id_for_label }}}}">), '
+            f"or render {{{{ {variable}.as_field_group }}}}",
+        )

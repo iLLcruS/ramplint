@@ -13,7 +13,7 @@ license-files = ["LICENSE", "LICENSES/*.md"]
 authors = [{ name = "Vladyslav Rostovskyi", email = "rostovskii.1020@gmail.com" }]
 keywords = [
     "accessibility", "a11y", "wcag", "aria", "screen-reader", "django", "jinja2",
-    "templates", "linter", "pre-commit", "django-templates", "jinja",
+    "templates", "linter", "pre-commit", "django-templates", "jinja", "django-forms",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

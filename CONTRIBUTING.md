@@ -85,7 +85,9 @@ snippet that reproduces the problem and the output of `ramplint --version`.
 5. Rules that need other templates (the parent of a child template, included
    partials) use `root.context`, a `ramplint.project.context.TemplateContext`
    or `None`. Every helper returns `None` when the answer is unknown: treat it
-   as "stay quiet". Django discovery lives in `src/ramplint/project/` and is
+   as "stay quiet". Rules that check `forms.py` are registered with
+   `@python_rule(...)` and get a `ramplint.pyforms.PythonModule` (the `ast`
+   tree and the project's templates). Django discovery lives in `src/ramplint/project/` and is
    tested with small fixture projects in `tests/test_project.py`.
 6. Add `docs/rules/RLxxx.md` (copy an existing page) and document the rule in
    the README rules table and in `CHANGELOG.md`. Tests check that every rule

@@ -247,7 +247,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     files_checked = 0
     for path in files:
         files_checked += 1
-        violations.extend(lint_file(path, rules, context=workspace.context_for(path)))
+        if path.suffix == ".py":
+            violations.extend(lint_file(path, rules, index=workspace.python_index(path)))
+        else:
+            violations.extend(lint_file(path, rules, context=workspace.context_for(path)))
 
     if args.output is not None or args.statistics:
         # Annotations only make sense for the full report on stdout.

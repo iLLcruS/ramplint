@@ -9,12 +9,14 @@ from pathlib import Path
 
 from ramplint.project.context import TemplateContext
 from ramplint.project.discovery import (
+    SKIP_DIRS,
     Project,
     configured_project,
     discover_project,
     find_project_root,
 )
 from ramplint.project.templates import TemplateIndex
+from ramplint.pyforms import is_forms_module
 
 #: Folder names that hold templates when there is no Django project to ask.
 TEMPLATE_FOLDER_NAMES = ("templates", "jinja2")
@@ -33,7 +35,10 @@ class Workspace:
         config_root: Path | None = None,
         cwd: Path | None = None,
         environ: dict[str, str] | None = None,
+        forms: bool = True,
     ) -> None:
+        #: Also lint Django forms modules (``forms.py``).
+        self.forms = forms
         self.extensions = tuple(
             e.lower() if e.startswith(".") else f".{e.lower()}" for e in extensions
         )
@@ -96,16 +101,38 @@ class Workspace:
                 and not self._excluded(current / d)
             )
             for filename in sorted(filenames):
-                if filename.lower().endswith(self.extensions):
-                    yield current / filename
+                path = current / filename
+                if filename.lower().endswith(self.extensions) or (
+                    self.forms and is_forms_module(path)
+                ):
+                    yield path
 
     def _project_files(self, project: Project, root: Path) -> Iterator[Path]:
-        if not project.template_dirs:
-            if not project.from_settings and project.settings_module is None:
-                yield from self._walk(root, swap_projects=False)  # nothing to go on
+        no_settings = not project.from_settings and project.settings_module is None
+        if not project.template_dirs and no_settings:
+            yield from self._walk(root, swap_projects=False)  # nothing to go on
             return
         for template_dir in project.template_dirs:
             yield from self._walk(template_dir.path, swap_projects=False)
+        if self.forms:
+            yield from self._forms_modules(project.root)
+
+    def _forms_modules(self, root: Path) -> Iterator[Path]:
+        """``forms.py`` files and ``forms/`` packages of the project's own code."""
+        for dirpath, dirnames, filenames in os.walk(root):
+            current = Path(dirpath)
+            dirnames[:] = sorted(
+                d
+                for d in dirnames
+                if d not in self.skip_dirs
+                and d not in SKIP_DIRS
+                and not d.startswith(".")
+                and not d.endswith(".egg-info")
+                and not self._excluded(current / d)
+            )
+            for filename in sorted(filenames):
+                if is_forms_module(current / filename):
+                    yield current / filename
 
     def files(self, paths: list[str] | None) -> Iterator[Path]:
         """Template files to lint. Explicit files are always included."""
@@ -162,6 +189,13 @@ class Workspace:
             if parent.name in TEMPLATE_FOLDER_NAMES:
                 return self._index([parent])
         return None
+
+    def python_index(self, path: Path) -> TemplateIndex | None:
+        """Templates of the project a Python module belongs to (for widget templates)."""
+        project = self.project_for(path.resolve())
+        if project is None or not project.template_dirs:
+            return None
+        return self._index([d.path for d in project.template_dirs])
 
     def context_for(self, path: Path) -> TemplateContext | None:
         index = self.index_for(path)

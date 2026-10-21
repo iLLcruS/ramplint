@@ -42,7 +42,14 @@
   <label for="city">{% trans "City" %}</label>
   <input id="city" name="city" autocomplete="{{ field.autocomplete }}">
 
-  {# Wrapped label, hidden and submit inputs. #}
+  {# Fields rendered one by one, each with its label; hidden fields need none. #}
+{% for field in profile_form.visible_fields %}
+  {{ field.label_tag }} {{ field }}
+{% endfor %}
+{% for field in profile_form.hidden_fields %}{{ field }}{% endfor %}
+<label for="{{ form.phone.id_for_label }}">{% trans "Phone" %}</label> {{ form.phone }}
+
+{# Wrapped label, hidden and submit inputs. #}
   <label>{% trans "Remember me" %} <input type="checkbox" name="remember"></label>
   <input type="hidden" name="next" value="{{ next }}">
   <input type="submit" value="{% trans 'Save' %}">

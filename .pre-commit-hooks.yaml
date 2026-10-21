@@ -1,7 +1,7 @@
 - id: ramplint
   name: ramplint
-  description: Accessibility linter for Django and Jinja2 templates
+  description: Accessibility linter for Django and Jinja2 templates and Django forms
   entry: ramplint
   language: python
   types: [file]
-  files: \.(html?|jinja2?|j2|djhtml)$
+  files: (\.(html?|jinja2?|j2|djhtml)|(^|/)forms\.py|(^|/)forms/[^/]+\.py)$

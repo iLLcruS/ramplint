@@ -64,6 +64,8 @@ class Node:
     #: Cross-template information for the template being linted, set on the
     #: root node only (see :mod:`ramplint.project.context`).
     context: Any = None
+    #: The original template source, set on the root node only.
+    source: str | None = None
 
     def contains(self, line: int, col: int) -> bool:
         """``(line, col)`` lies between this element's start and end tags."""
@@ -213,6 +215,7 @@ def parse(
     builder = _TreeBuilder(branch_of, source)
     builder.feed(html)
     builder.close()
+    builder.root.source = source
     return builder.root
 
 

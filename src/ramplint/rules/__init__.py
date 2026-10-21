@@ -11,6 +11,7 @@ from pathlib import Path
 from ramplint.rules import (  # noqa: F401
     aria,
     controls,
+    django_forms,
     document,
     embeds,
     forms,
