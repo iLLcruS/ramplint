@@ -6,8 +6,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-21
+
 ### Added
 
+- 21 new rules: ramplint now checks 35 rules (up from 14).
 - WAI-ARIA rules:
   - `RL701` aria-role: unknown and abstract roles, with "did you mean" suggestions (#38).
   - `RL702` aria-valid-attr: misspelled `aria-*` attributes (#39).
@@ -151,7 +154,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Configuration via `[tool.ramplint]` in `pyproject.toml`.
 - pre-commit hook.
 
-[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.3.1...HEAD
+[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/iLLcruS/ramplint/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/iLLcruS/ramplint/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/iLLcruS/ramplint/compare/0.2.1...0.3.0
 [0.2.1]: https://github.com/iLLcruS/ramplint/compare/0.2.0...0.2.1
