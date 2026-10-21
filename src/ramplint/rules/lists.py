@@ -6,6 +6,8 @@ from collections.abc import Iterator
 
 from ramplint.dom import Node
 from ramplint.rules.base import rule
+from ramplint.rules.names import has_accessible_name
+from ramplint.template import PLACEHOLDERS
 
 #: Elements allowed anywhere inside lists: they render nothing themselves.
 _SCRIPT_SUPPORTING = frozenset({"script", "template"})
@@ -106,6 +108,43 @@ _DL_ITEMS = frozenset({"dt", "dd"})
 _DL = frozenset({"dl"})
 
 
+def _items_are_static(container: Node) -> bool:
+    """No terms or descriptions can be added at render time."""
+    for child in container.children:
+        if isinstance(child, str):
+            if any(p in child for p in PLACEHOLDERS):
+                return False
+        elif child.dynamic_attrs:
+            return False
+    return True
+
+
+def _group_problems(container: Node) -> Iterator[tuple[Node, str]]:
+    """Terms without descriptions and descriptions without terms.
+
+    A ``<dl>`` (or a ``<div>`` group in it) is a list of groups: one or more
+    ``<dt>`` followed by one or more ``<dd>``.
+    """
+    if not _items_are_static(container):
+        return
+    items = [c for c in _child_elements(container) if c.tag in _DL_ITEMS]
+    for index, item in enumerate(items):
+        previous = items[index - 1] if index else None
+        following = items[index + 1] if index + 1 < len(items) else None
+        if item.tag == "dd" and previous is None:
+            yield (
+                item,
+                "<dd> has no <dt> before it, so the description belongs to no term; "
+                "put the matching <dt> first",
+            )
+        elif item.tag == "dt" and following is None:
+            yield (
+                item,
+                "<dt> has no <dd> after it, so the term has no description; add a <dd> "
+                "(in the same <div> group, if you use groups)",
+            )
+
+
 @rule(
     code="RL305",
     name="definition-list",
@@ -142,7 +181,12 @@ def definition_list(root: Node) -> Iterator[tuple[Node, str]]:
                         f"<{grandchild.tag}> cannot be inside a <div> group of a <dl>; a "
                         "group may only contain <dt> and <dd>",
                     )
+                if not child.dynamic_attrs:
+                    yield from _group_problems(child)
+            yield from _group_problems(node)
         elif node.tag in _DL_ITEMS:
+            if node.tag == "dt" and not node.aria_hidden and not has_accessible_name(node):
+                yield node, "<dt> is empty; screen readers announce a description without its term"
             if _has_list_context(node, _DL, full_page=full_page, group="div"):
                 continue
             yield (
