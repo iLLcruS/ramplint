@@ -46,7 +46,7 @@ examples/templates/accounts/login.html:10:3: RL401 <input type="text"> has no as
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 37 problems in 7 of 9 files.
+Found 43 problems in 9 of 11 files.
 ```
 
 See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/examples/README.md) for what each demo template contains.
@@ -123,11 +123,17 @@ $ ramplint examples/ --statistics
 2  RL201  table-header
 2  RL301  heading-order
 1  RL102  iframe-title
+1  RL202  th-scope
+1  RL203  empty-table-header
 1  RL302  empty-heading
 1  RL303  duplicate-id
+1  RL304  list-structure
+1  RL305  definition-list
+1  RL306  landmark-one-main
 1  RL402  autocomplete-valid
 1  RL503  no-positive-tabindex
 1  RL504  anchor-is-valid
+1  RL505  nested-interactive
 1  RL601  html-lang
 1  RL602  viewport-zoom
 1  RL701  aria-role
@@ -136,7 +142,7 @@ $ ramplint examples/ --statistics
 1  RL704  aria-required-attr
 1  RL705  aria-hidden-focus
 
-Found 37 problems in 7 of 9 files.
+Found 43 problems in 9 of 11 files.
 ```
 
 It works with `--format text` (default) and `--format json`.
@@ -154,15 +160,21 @@ It works with `--format text` (default) and `--format json`.
 | [`RL101`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL101.md) | `img-alt`       | `<img>` has an `alt` attribute; `<input type="image">` and `<area>` have non-empty `alt` | 1.1.1 (A)        |
 | [`RL102`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL102.md) | `iframe-title`  | `<iframe>` has a `title` describing its content                                          | 4.1.2 (A)        |
 | [`RL201`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL201.md) | `table-header`  | Data tables use real `<th>` header cells                                                 | 1.3.1 (A)        |
+| [`RL202`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL202.md) | `th-scope` | `scope` is `row`, `col`, `rowgroup` or `colgroup`, and only used on `<th>` | 1.3.1 (A) |
+| [`RL203`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL203.md) | `empty-table-header` | `<th>` cells are not empty (the top-left corner cell is allowed) | 1.3.1 (A) |
 | [`RL301`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL301.md) | `heading-order` | Heading levels do not skip (`<h2>` → `<h4>`)                                             | 1.3.1 (A)        |
 | [`RL302`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL302.md) | `empty-heading` | Headings are not empty                                                                   | 2.4.6 (AA)       |
 | [`RL303`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL303.md) | `duplicate-id`  | `id` values are unique (same id in `{% if %}` / `{% else %}` branches is allowed)        | 1.3.1 (A)        |
+| [`RL304`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL304.md) | `list-structure` | `<ul>` / `<ol>` contain only `<li>`, and `<li>` is inside a list | 1.3.1 (A) |
+| [`RL305`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL305.md) | `definition-list` | `<dl>` contains only `<dt>`, `<dd>` and `<div>` groups of them | 1.3.1 (A) |
+| [`RL306`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL306.md) | `landmark-one-main` | One `<main>` per page: no duplicates, none missing in full-page templates | 1.3.1, 2.4.1 (A) |
 | [`RL401`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL401.md) | `form-label`    | `<input>`, `<select>` and `<textarea>` have an associated `<label>`                      | 1.3.1, 4.1.2 (A) |
 | [`RL402`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL402.md) | `autocomplete-valid` | `autocomplete` uses valid autofill tokens (catches typos like `emial`)              | 1.3.5 (AA)       |
 | [`RL501`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL501.md) | `button-name`   | Buttons (including icon-only buttons) have an accessible name                            | 4.1.2 (A)        |
 | [`RL502`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL502.md) | `link-name`     | Links have an accessible name                                                            | 2.4.4, 4.1.2 (A) |
 | [`RL503`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL503.md) | `no-positive-tabindex` | `tabindex` is not greater than `0`                                                | 2.4.3 (A)        |
 | [`RL504`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL504.md) | `anchor-is-valid` | Links have a real target (no `href="#"`, `javascript:` or click-only `<a>`)        | 2.1.1 (A)        |
+| [`RL505`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL505.md) | `nested-interactive` | No buttons, links or other controls inside `<a href>` or `<button>` | 4.1.2 (A) |
 | [`RL601`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL601.md) | `html-lang`     | `<html>` declares the page language                                                      | 3.1.1 (A)        |
 | [`RL602`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL602.md) | `viewport-zoom` | `<meta name="viewport">` does not disable zoom (`user-scalable=no`, `maximum-scale` < 2) | 1.4.4 (AA)       |
 | [`RL701`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL701.md) | `aria-role` | `role` is a real, non-abstract WAI-ARIA role (catches typos like `dailog`) | 4.1.2 (A) |
@@ -208,6 +220,25 @@ Frames hidden with `aria-hidden="true"` are skipped.
 Tables whose rows come from `{% include %}`, `{% block %}` or `{{ form.as_table }}`
 are skipped because their content is not visible in the template.
 
+#### RL202 `th-scope`
+
+```django
+{# ✗ #} <table><tr><th scope="column">Name</th></tr></table>
+{# ✗ #} <table><tr><td scope="row">{{ p.name }}</td></tr></table>
+{# ✓ #} <table><tr><th scope="col">Name</th></tr></table>
+```
+
+A typo in `scope` is silently ignored. ramplint suggests the closest valid value.
+
+#### RL203 `empty-table-header`
+
+```django
+{# ✗ #} <table><tr><th>Order</th><th></th></tr>…</table>
+{# ✓ #} <table><tr><th>Order</th><th><span class="visually-hidden">Actions</span></th></tr>…</table>
+```
+
+The empty top-left corner cell of a table with both column and row headers is allowed.
+
 #### RL301 `heading-order`
 
 ```django
@@ -235,6 +266,34 @@ The first heading in a file sets the baseline. A child template that starts at
 ramplint knows which `{% if %}` / `{% elif %}` / `{% else %}` (and `{% for %}` /
 `{% empty %}`) branch an element is in, so the same id in mutually exclusive
 branches is not reported. Ids built from variables are skipped.
+
+#### RL304 `list-structure`
+
+```django
+{# ✗ #} <ul>{% for c in categories %}<a href="{{ c.url }}">{{ c.name }}</a>{% endfor %}</ul>
+{# ✓ #} <ul>{% for c in categories %}<li><a href="{{ c.url }}">{{ c.name }}</a></li>{% endfor %}</ul>
+{# ✓ #} <ul>{% include "partials/menu_items.html" %}</ul>
+```
+
+A partial whose top level is `<li>` items (included into a list elsewhere) is fine.
+
+#### RL305 `definition-list`
+
+```django
+{# ✗ #} <dl><span class="row"><dt>Weight</dt><dd>{{ p.weight }}</dd></span></dl>
+{# ✓ #} <dl><div class="row"><dt>Weight</dt><dd>{{ p.weight }}</dd></div></dl>
+```
+
+#### RL306 `landmark-one-main`
+
+```django
+{# ✗ #} <main>{% block content %}{% endblock %}</main><main>{% block sidebar %}{% endblock %}</main>
+{# ✓ #} <main>{% block content %}{% endblock %}</main><aside>{% block sidebar %}{% endblock %}</aside>
+```
+
+Full-page templates without a `<main>` are reported too, unless a `{% block %}`
+or `{% include %}` could render it. Standalone pages such as `500.html` are the
+usual case. Child templates and partials are not checked for a missing `<main>`.
 
 #### RL401 `form-label`
 
@@ -301,11 +360,21 @@ order, ahead of everything else on the page. Reorder the markup instead.
 Links navigate, buttons act. A fake link is missing from the keyboard focus
 order (no `href`) or does not react to the Space key like a button would.
 
+#### RL505 `nested-interactive`
+
+```django
+{# ✗ #} <a href="{{ p.url }}" class="card">{{ p.name }} <button type="button">Add to cart</button></a>
+{# ✓ #} <div class="card"><a href="{{ p.url }}">{{ p.name }}</a> <button type="button">Add to cart</button></div>
+```
+
+Browsers and screen readers handle a control inside a link (or a link inside a
+button) differently, and the inner one is often unreachable by keyboard.
+
 #### RL601 `html-lang`
 
 ```django
 {# ✗ #} <html>
-{# ✓ #} <html lang="{{ LANGUAGE_CODE }}">
+{# ✓ #} <html lang="{{ LANGUAGE_CODE }}">{% block body %}{% endblock %}</html>
 ```
 
 #### RL602 `viewport-zoom`

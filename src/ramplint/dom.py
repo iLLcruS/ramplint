@@ -101,6 +101,11 @@ class Node:
         return (self.attrs.get("role") or "").strip().lower()
 
     @property
+    def inert(self) -> bool:
+        """Inside a ``<template>`` element: parsed, but not rendered as is."""
+        return any(ancestor.tag == "template" for ancestor in self.ancestors())
+
+    @property
     def aria_hidden(self) -> bool:
         return (self.attrs.get("aria-hidden") or "").strip().lower() == "true"
 

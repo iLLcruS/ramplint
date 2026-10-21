@@ -78,6 +78,29 @@
 </div>
 <div class="carousel-clone" aria-hidden="true"><a href="{% url 'catalog:index' %}" tabindex="-1">{% trans "All products" %}</a></div>
 
+{# Lists: items from a loop, an include or a block; a description list with <div> groups. #}
+<ul class="breadcrumbs">{% for crumb in breadcrumbs %}<li><a href="{{ crumb.url }}">{{ crumb.title }}</a></li>{% endfor %}</ul>
+<ul class="menu">{% include "partials/menu_items.html" %}</ul>
+<ol class="steps">{% block steps %}{% endblock %}</ol>
+<ul role="tablist"><button role="tab" aria-selected="true">{% trans "Reviews" %}</button></ul>
+<dl class="specs">
+  {% for spec in product.specs.all %}
+  <div><dt>{{ spec.name }}</dt><dd>{{ spec.value }}</dd></div>
+  {% endfor %}
+</dl>
+
+{# Tables: valid scope, a visually hidden header and the empty top-left corner cell. #}
+<table class="sales">
+  <tr><th></th><th scope="col">{% trans "Q1" %}</th><th><span class="visually-hidden">{% trans "Actions" %}</span></th></tr>
+  {% for region in regions %}
+  <tr><th scope="row">{{ region.name }}</th><td>{{ region.q1 }}</td><td><a href="{{ region.url }}">{% trans "Details" %}</a></td></tr>
+  {% endfor %}
+</table>
+
+{# A card with a link and a separate button; an <a> without href is not a control. #}
+<div class="card"><h3><a href="{{ product.get_absolute_url }}">{{ product.name }}</a></h3><button type="button">{% trans "Add to cart" %}</button></div>
+<a class="drag-handle"><button type="button">{% trans "Move" %}</button></a>
+
 {# Frames: title from a variable, and a hidden tracking frame. #}
 <iframe src="{{ video.embed_url }}" title="{{ video.title }}"></iframe>
 <iframe src="https://example.com/pixel" aria-hidden="true" tabindex="-1"></iframe>

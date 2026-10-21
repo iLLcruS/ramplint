@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block content %}
+<h2>{{ category.name }}</h2>
+
+<ul class="subcategories">
+  {% for child in category.children.all %}
+  <a href="{{ child.get_absolute_url }}">{{ child.name }}</a>
+  {% endfor %}
+</ul>
+
+<div class="products">
+  {% for product in products %}
+  <a href="{{ product.get_absolute_url }}" class="card">
+    <img src="{{ product.thumb.url }}" alt="{{ product.name }}">
+    <h3>{{ product.name }}</h3>
+    <button type="button" data-product="{{ product.pk }}">{% trans "Add to cart" %}</button>
+  </a>
+  {% endfor %}
+</div>
+
+<h3>{% trans "Compare" %}</h3>
+<table class="compare">
+  <tr>
+    <th scope="column">{% trans "Product" %}</th>
+    <th scope="col">{% trans "Price" %}</th>
+    <th></th>
+  </tr>
+  {% for product in compared %}
+  <tr>
+    <td>{{ product.name }}</td>
+    <td>{{ product.price }}</td>
+    <td><a href="{% url 'compare:remove' product.pk %}">{% trans "Remove" %}</a></td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h3>{% trans "Delivery" %}</h3>
+<dl class="delivery">
+  <span class="row"><dt>{% trans "Courier" %}</dt><dd>{% trans "1-2 days" %}</dd></span>
+  <dt>{% trans "Pickup" %}</dt>
+  <dd>{% trans "Today" %}</dd>
+</dl>
+{% endblock %}
