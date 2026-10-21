@@ -17,6 +17,8 @@ from ramplint.rules import (  # noqa: F401
     headings,
     ids,
     images,
+    landmarks,
+    lists,
     tables,
 )
 from ramplint.rules.base import REGISTRY, Rule

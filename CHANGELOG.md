@@ -15,6 +15,21 @@ and the project uses [Semantic Versioning](https://semver.org/).
     `aria-describedby` that reference missing ids (#40).
   - `RL704` aria-required-attr: roles without the states they require (#41).
   - `RL705` aria-hidden-focus: focusable content inside `aria-hidden="true"` (#42).
+- Structure rules:
+  - `RL304` list-structure: `<ul>` / `<ol>` with children other than `<li>`, and
+    `<li>` outside a list; top-level `<li>` in partials is allowed (#43).
+  - `RL305` definition-list: `<dl>` with children other than `<dt>`, `<dd>` and
+    `<div>` groups, and `<dt>` / `<dd>` outside a `<dl>` (#44).
+  - `RL505` nested-interactive: links, buttons, form controls and focusable
+    elements inside `<a href>` or `<button>` (#45).
+  - `RL202` th-scope: invalid `scope` values, with "did you mean" suggestions,
+    and `scope` on `<td>` (#46).
+  - `RL203` empty-table-header: `<th>` without text; the top-left corner cell
+    of a table with row and column headers is allowed (#47).
+  - `RL306` landmark-one-main: more than one `<main>` / `role="main"`, and
+    full-page templates without one (#48).
+- Demo templates for the new rules: `catalog/category.html` and a standalone
+  `errors/500.html`.
 
 ## [0.3.1] - 2026-10-21
 

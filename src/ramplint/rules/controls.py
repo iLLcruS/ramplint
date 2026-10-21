@@ -4,6 +4,7 @@ import re
 from collections.abc import Iterator
 
 from ramplint.dom import Node
+from ramplint.rules.aria import effective_role
 from ramplint.rules.base import rule
 from ramplint.rules.names import has_accessible_name, has_naming_attribute
 
@@ -117,3 +118,71 @@ def anchor_is_valid(root: Node) -> Iterator[tuple[Node, str]]:
                 f'<a href="{href.strip()}"> is used as a button; use a <button> for '
                 "actions, or link to a real URL or #fragment",
             )
+
+
+_INTERACTIVE_TAGS = frozenset({"a", "button", "select", "textarea", "input", "details", "summary"})
+_INTERACTIVE_ROLES = frozenset(
+    {
+        "button", "checkbox", "combobox", "link", "listbox", "menuitem",
+        "menuitemcheckbox", "menuitemradio", "option", "radio", "searchbox",
+        "slider", "spinbutton", "switch", "tab", "textbox", "treeitem",
+    }
+)  # fmt: skip
+
+
+def _is_interactive_container(node: Node) -> bool:
+    return node.tag == "button" or (node.tag == "a" and node.get("href") is not None)
+
+
+def _is_interactive_element(node: Node) -> bool:
+    if node.tag == "a":
+        return node.get("href") is not None
+    if node.tag == "input":
+        return (node.get("type") or "").strip().lower() != "hidden"
+    if node.tag == "summary":
+        # A <summary> inside <details> is reported as part of the <details>.
+        return not any(ancestor.tag == "details" for ancestor in node.ancestors())
+    return True
+
+
+def _interactive_kind(node: Node) -> str | None:
+    """How ``node`` is interactive, or None if it is not (or cannot be known)."""
+    if node.dynamic_attrs:
+        return None
+    if node.tag in _INTERACTIVE_TAGS and _is_interactive_element(node):
+        if node.tag == "input":
+            return f'<input type="{(node.get("type") or "text").strip().lower()}">'
+        return f"<{node.tag}>"
+    role = effective_role(node)
+    if role in _INTERACTIVE_ROLES:
+        return f'<{node.tag} role="{role}">'
+    tabindex = node.get("tabindex")
+    if tabindex is not None and not node.is_dynamic("tabindex"):
+        match = _TABINDEX_RE.match(tabindex)
+        if match:  # tabindex="0" or more; negative values do not match
+            return f'<{node.tag} tabindex="{tabindex.strip()}">'
+    return None
+
+
+@rule(
+    code="RL505",
+    name="nested-interactive",
+    summary="Interactive elements must not contain other interactive elements.",
+    wcag="4.1.2 Name, Role, Value (A)",
+)
+def nested_interactive(root: Node) -> Iterator[tuple[Node, str]]:
+    for node in root.iter():
+        if node.inert:
+            continue
+        container = next((a for a in node.ancestors() if _is_interactive_container(a)), None)
+        if container is None:
+            continue
+        kind = _interactive_kind(node)
+        if kind is None:
+            continue
+        outer = "<button>" if container.tag == "button" else "<a href>"
+        yield (
+            node,
+            f"{kind} is nested inside {outer} (line {container.line}); screen readers "
+            "and keyboards cannot reach the inner control reliably. Move it outside",
+        )
