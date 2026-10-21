@@ -69,3 +69,11 @@ def test_readme_links_are_absolute():
         url for pair in targets for url in pair if url and not re.match(r"(https?:|mailto:|#)", url)
     ]
     assert not relative, f"use absolute GitHub URLs in README: {relative}"
+
+
+def test_readme_statistics_sample_matches_real_output(capsys, monkeypatch):
+    monkeypatch.chdir(ROOT)
+    main(["examples", "--statistics", "--no-color"])
+    real_output = capsys.readouterr().out
+    sample = README.split("$ ramplint examples/ --statistics\n", 1)[1].split("```", 1)[0]
+    assert sample == real_output

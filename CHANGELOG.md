@@ -16,6 +16,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   their documentation and can be filtered by rule and template (#10).
 - `--format sarif`: SARIF 2.1.0 output for GitHub Code Scanning, with a
   ready-to-copy workflow in the README (#11).
+- `--statistics` shows the number of problems per rule, most frequent first,
+  as text or JSON (#12).
 
 ### Changed
 

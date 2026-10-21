@@ -224,3 +224,72 @@ def test_html_output(project, capsys):
     html = (project / "report.html").read_text()
     assert html.startswith("<!DOCTYPE html>")
     assert "2 accessibility problems in 1 template" in html
+
+
+# --------------------------------------------------------------------------
+# --statistics (#12)
+# --------------------------------------------------------------------------
+
+
+@pytest.fixture
+def stats_project(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    (tmp_path / "a.html").write_text(
+        '<img src="1.png"><img src="2.png"><img src="3.png">\n<a href="/"></a>\n'
+    )
+    (tmp_path / "b.html").write_text('<a href="/"></a>\n<input name="q">\n' + "<p>x</p>\n" * 10)
+    return tmp_path
+
+
+def test_statistics_text(stats_project, capsys):
+    assert main(["--statistics", "--no-color"]) == EXIT_VIOLATIONS
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[:3] == [
+        "3  RL101  img-alt",
+        "2  RL502  link-name",
+        "1  RL401  form-label",
+    ]
+    assert lines[-1] == "Found 6 problems in 2 of 2 files."
+
+
+def test_statistics_aligns_wide_counts(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "a.html").write_text('<img src="x.png">\n' * 12 + '<a href="/"></a>\n')
+    main(["--statistics", "--no-color"])
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0] == "12  RL101  img-alt"
+    assert lines[1] == " 1  RL502  link-name"
+
+
+def test_statistics_json(stats_project, capsys):
+    main(["--statistics", "--format", "json"])
+    data = json.loads(capsys.readouterr().out)
+    assert data["problems"] == 6
+    assert data["files_checked"] == 2
+    assert data["statistics"][0] == {"code": "RL101", "name": "img-alt", "count": 3}
+
+
+def test_statistics_clean(stats_project, capsys):
+    (stats_project / "a.html").write_text("<p>ok</p>")
+    (stats_project / "b.html").write_text("<p>ok</p>")
+    assert main(["--statistics"]) == EXIT_OK
+    assert "All checks passed (2 files)." in capsys.readouterr().out
+
+
+def test_statistics_to_file(stats_project, capsys):
+    main(["--statistics", "-o", "stats.txt"])
+    assert (stats_project / "stats.txt").read_text().startswith("3  RL101  img-alt\n")
+
+
+def test_statistics_ignores_github_default(stats_project, capsys, monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    main(["--statistics"])
+    out = capsys.readouterr().out
+    assert "::error" not in out
+    assert "3  RL101  img-alt" in out
+
+
+def test_statistics_rejects_other_formats(stats_project, capsys):
+    assert main(["--statistics", "--format", "html"]) == EXIT_ERROR
+    assert "--statistics works with --format json or text" in capsys.readouterr().err

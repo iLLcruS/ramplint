@@ -73,6 +73,7 @@ ramplint templates/ shop/templates/base.html
 ramplint --select RL1,RL5       # only image and control rules
 ramplint --ignore heading-order # rules can be referenced by code or name
 ramplint --format json          # machine-readable output
+ramplint --statistics          # problems per rule, most frequent first
 ramplint -o report.json --format json  # save the report to a file
 ramplint -o a11y-report.html --format html  # shareable HTML report
 ramplint --list-rules
@@ -108,6 +109,31 @@ passes ramplint itself.
 <p align="center">
   <img src="https://raw.githubusercontent.com/iLLcruS/ramplint/main/docs/html-report-details.png" alt="HTML report details: filters by rule and template, and each problem with the highlighted line of template source" width="800">
 </p>
+
+`--statistics` replaces the list of problems with a count per rule, which helps
+decide what to fix first:
+
+```console
+$ ramplint examples/ --statistics
+6  RL401  form-label
+6  RL502  link-name
+4  RL101  img-alt
+4  RL501  button-name
+2  RL201  table-header
+2  RL301  heading-order
+1  RL102  iframe-title
+1  RL302  empty-heading
+1  RL303  duplicate-id
+1  RL402  autocomplete-valid
+1  RL503  no-positive-tabindex
+1  RL504  anchor-is-valid
+1  RL601  html-lang
+1  RL602  viewport-zoom
+
+Found 32 problems in 6 of 8 files.
+```
+
+It works with `--format text` (default) and `--format json`.
 
 | Exit code | Meaning                      |
 |-----------|------------------------------|

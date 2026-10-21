@@ -14,6 +14,7 @@ The CLI picks up registered formats automatically (``--format`` choices,
 from __future__ import annotations
 
 import json
+from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TextIO
@@ -59,8 +60,6 @@ def summary_line(violations: Sequence[Violation], files_checked: int) -> str:
     return f"Found {len(violations)} {problems} in {affected} of {files_checked} {files_word}."
 
 
-# -- built-in formats ------------------------------------------------------
-
 _RESET = "\033[0m"
 _BOLD = "\033[1m"
 _RED = "\033[31m"
@@ -70,6 +69,58 @@ _DIM = "\033[2m"
 
 def _paint(text: str, *codes: str, color: bool) -> str:
     return f"{''.join(codes)}{text}{_RESET}" if color else text
+
+
+def rule_statistics(violations: Sequence[Violation]) -> list[tuple[int, str, str]]:
+    """``(count, code, name)`` per rule, most frequent first."""
+    counts = Counter((v.code, v.name) for v in violations)
+    return sorted(
+        ((count, code, name) for (code, name), count in counts.items()),
+        key=lambda item: (-item[0], item[1]),
+    )
+
+
+def write_statistics_text(
+    violations: Sequence[Violation], files_checked: int, out: TextIO, color: bool = False
+) -> None:
+    stats = rule_statistics(violations)
+    width = max((len(str(count)) for count, _, _ in stats), default=1)
+    for count, code, name in stats:
+        painted_code = _paint(code, _RED, _BOLD, color=color)
+        out.write(f"{count:>{width}}  {painted_code}  {name}\n")
+    summary = summary_line(violations, files_checked)
+    if violations:
+        out.write("\n" + _paint(summary, _RED, _BOLD, color=color) + "\n")
+    else:
+        out.write(_paint(summary, _CYAN, color=color) + "\n")
+
+
+def write_statistics_json(
+    violations: Sequence[Violation], files_checked: int, out: TextIO, color: bool = False
+) -> None:
+    json.dump(
+        {
+            "files_checked": files_checked,
+            "problems": len(violations),
+            "statistics": [
+                {"code": code, "name": name, "count": count}
+                for count, code, name in rule_statistics(violations)
+            ],
+        },
+        out,
+        indent=2,
+    )
+    out.write("\n")
+
+
+#: Formats that support ``--statistics``.
+STATISTICS_WRITERS: dict[str, WriteReport] = {
+    "text": write_statistics_text,
+    "json": write_statistics_json,
+}
+
+
+# -- built-in formats ------------------------------------------------------
 
 
 @reporter("text", "Human-readable, one problem per line (default)")
