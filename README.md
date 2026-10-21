@@ -90,6 +90,7 @@ Files passed explicitly are always checked, whatever their extension.
 | `json`   | Scripts, dashboards and other tools                              |
 | `github` | Annotations in GitHub pull requests (default inside Actions)     |
 | `html`   | A single self-contained page to share with your team or a client |
+| `sarif`  | GitHub Code Scanning and other security dashboards               |
 
 `--output FILE` writes the report to a file and prints a one-line summary
 instead. Missing folders are created, and colors are never written to files.
@@ -338,6 +339,38 @@ problems appear as annotations right in the pull request diff.
 ```yaml
 - run: pip install ramplint
 - run: ramplint templates/
+```
+
+### GitHub Code Scanning
+
+With `--format sarif`, problems also show up in the repository's
+**Security → Code scanning** tab, where they are tracked over time and can be
+dismissed with a reason. Code scanning is free for public repositories; private
+repositories need GitHub Advanced Security.
+
+```yaml
+name: Accessibility
+
+on: [push, pull_request]
+
+jobs:
+  ramplint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ramplint
+      # --exit-zero: let Code Scanning decide whether the check fails
+      - run: ramplint templates/ --format sarif -o ramplint.sarif --exit-zero
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ramplint.sarif
+          category: ramplint
 ```
 
 ## Python API

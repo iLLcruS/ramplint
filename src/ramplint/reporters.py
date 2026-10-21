@@ -126,4 +126,4 @@ def report_github(
 
 
 # Formats that live in their own module register themselves on import.
-from ramplint import html_report  # noqa: E402, F401
+from ramplint import html_report, sarif  # noqa: E402, F401

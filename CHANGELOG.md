@@ -14,6 +14,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   rule and problems grouped by template; light and dark themes (#9).
 - HTML report shows the template lines around each problem, links rules to
   their documentation and can be filtered by rule and template (#10).
+- `--format sarif`: SARIF 2.1.0 output for GitHub Code Scanning, with a
+  ready-to-copy workflow in the README (#11).
 
 ### Changed
 
