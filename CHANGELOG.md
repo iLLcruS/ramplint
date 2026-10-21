@@ -6,6 +6,23 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Django forms accessibility:
+  - `RL404` field-label: `{{ field }}`, `{{ form.email }}`, widget-tweaks
+    filters and `{% render_field %}` rendered without the field's label.
+  - `RL405` form-label-empty: `label=""` on form fields, empty labels in a
+    `ModelForm`'s `Meta.labels`, and `self.fields[...].label = ""` in
+    `forms.py`.
+  - `RL406` widget-id: custom widgets whose template never renders
+    `widget.attrs` (so the input loses its id) or whose `id_for_label()` returns
+    nothing.
+- `forms.py` files and `forms/` packages of a Django project are linted along
+  with its templates (read with `ast`, never imported); `# ramplint: ignore`
+  comments work in them.
+- The pre-commit hook also passes `forms.py` files and `forms/` packages.
+- Demo: `examples/django_project/accounts/forms.py` and `profile.html`.
+
 ## [0.5.1] - 2026-10-21
 
 ### Changed

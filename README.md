@@ -2,7 +2,7 @@
 
 <p align="center">
   <strong>Accessibility linter for Django and Jinja2 templates.</strong><br>
-  Catch WCAG problems in your <code>.html</code> templates before they reach production.
+  Catch WCAG problems in your <code>.html</code> templates and Django forms before they reach production.
 </p>
 
 <p align="center">
@@ -46,7 +46,7 @@ examples/templates/accounts/login.html:10:3: RL401 <input type="text"> has no as
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 59 problems in 14 of 20 files.
+Found 62 problems in 16 of 23 files.
 ```
 
 See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/examples/README.md) for what each demo template contains.
@@ -54,8 +54,9 @@ See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/example
 ## Highlights
 
 - **Knows your Django project.** Reads `TEMPLATES` and `INSTALLED_APPS` from your settings (without importing them) and lints exactly the folders Django loads templates from.
+- **Checks Django forms.** Finds fields rendered with `{{ field }}` or `{% render_field %}` but no label, empty `label=""` in `forms.py`, and custom widgets that lose the id their `<label for>` points to.
 - **Sees across templates.** Follows `{% extends %}` and `{% include %}`: a skipped heading after the `<h1>` in `base.html`, an empty page title or a label for a field in an included partial are all checked.
-- **36 rules.** Images, tables, lists, landmarks, forms, controls, page language and WAI-ARIA, each with a documentation page.
+- **39 rules.** Images, tables, lists, landmarks, forms, controls, page language and WAI-ARIA, each with a documentation page.
 - **Template-aware.** Django and Jinja2 tags, variables and comments are understood, not stripped blindly.
 - **Low noise.** If something is only known at render time (`{% include %}`, `{{ form.email }}`, `{{ widget.attrs }}`, `{% block %}`), ramplint assumes the best and stays quiet.
 - **Zero dependencies.** Pure Python standard library (plus `tomli` on Python < 3.11).
@@ -123,12 +124,12 @@ $ cd examples/django_project && ramplint --list-templates
 Project   .
 Settings  config.settings.dev (from manage.py)
 Template folders:
-  templates           DIRS          3 templates
+  templates           DIRS          4 templates
   catalog/templates   app catalog   1 template
-  accounts/templates  app accounts  1 template
+  accounts/templates  app accounts  2 templates
   catalog/jinja2      app catalog   1 template (jinja2)
 
-6 templates to lint.
+8 templates and 1 forms module to lint.
 ```
 
 `--list-templates --format json` gives the same as data, and `--verbose` prints
@@ -136,6 +137,23 @@ it to stderr before linting. Explicit paths always win: `ramplint some/file.html
 lints that file, and a folder without `manage.py` is walked as before. Turn
 discovery off with `--no-django` or `django = false`, or list the folders
 yourself with `template-dirs` (see [Configuration](#configuration)).
+
+### Django forms accessibility
+
+Most accessibility bugs in Django forms are invisible in the template: `{{ field }}`
+looks fine, but it renders only the `<input>`, without its `<label>`. ramplint
+checks the template **and** your `forms.py` (read with `ast`, never imported):
+
+| Problem | Rule |
+|---------|------|
+| `{{ field }}`, `{{ form.email }}`, `{{ form.email\|add_class:"x" }}` or `{% render_field form.email %}` (django-widget-tweaks) with no `{{ field.label_tag }}` / `<label for="{{ field.id_for_label }}">` | `RL404` |
+| `label=""`, `labels = {"bio": ""}` in `Meta`, `self.fields["x"].label = ""`: an empty `<label>` and a placeholder-only field | `RL405` |
+| A custom widget whose template drops `widget.attrs`, or whose `id_for_label()` returns `None`: `<label for>` and `aria-describedby` point to nothing | `RL406` |
+
+`forms.py` files and `forms/` packages are linted together with the templates
+when ramplint finds your project; pass them explicitly (`ramplint shop/forms.py`)
+otherwise. Works with plain Django forms, `ModelForm`, django-crispy-forms
+(`|as_crispy_field` renders the label, so it is fine) and django-widget-tweaks.
 
 ### Across templates
 
@@ -206,6 +224,9 @@ $ ramplint examples/ --statistics
 1  RL305  definition-list
 1  RL402  autocomplete-valid
 1  RL403  label-for-target
+1  RL404  field-label
+1  RL405  form-label-empty
+1  RL406  widget-id
 1  RL503  no-positive-tabindex
 1  RL504  anchor-is-valid
 1  RL505  nested-interactive
@@ -222,7 +243,7 @@ $ ramplint examples/ --statistics
 1  RL704  aria-required-attr
 1  RL705  aria-hidden-focus
 
-Found 59 problems in 14 of 20 files.
+Found 62 problems in 16 of 23 files.
 ```
 
 It works with `--format text` (default) and `--format json`.
@@ -255,6 +276,9 @@ It works with `--format text` (default) and `--format json`.
 | [`RL401`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL401.md) | `form-label`    | `<input>`, `<select>` and `<textarea>` have an associated `<label>`                      | 1.3.1, 4.1.2 (A) |
 | [`RL402`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL402.md) | `autocomplete-valid` | `autocomplete` uses valid autofill tokens (catches typos like `emial`)              | 1.3.5 (AA)       |
 | [`RL403`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL403.md) | `label-for-target` | `<label for>` points to an existing `id` (catches `for` matching the `name`) | 1.3.1, 4.1.2 (A) |
+| [`RL404`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL404.md) | `field-label` | `{{ field }}`, `{{ form.email }}` and `{% render_field %}` have their `<label>` | 1.3.1, 4.1.2 (A) |
+| [`RL405`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL405.md) | `form-label-empty` | No `label=""` on fields in `forms.py` (placeholder-only fields) | 1.3.1, 4.1.2 (A) |
+| [`RL406`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL406.md) | `widget-id` | Custom widgets keep the `id` that `<label for>` and `aria-describedby` point to | 1.3.1, 4.1.2 (A) |
 | [`RL501`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL501.md) | `button-name`   | Buttons (including icon-only buttons) have an accessible name                            | 4.1.2 (A)        |
 | [`RL502`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL502.md) | `link-name`     | Links have an accessible name                                                            | 2.4.4, 4.1.2 (A) |
 | [`RL503`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL503.md) | `no-positive-tabindex` | `tabindex` is not greater than `0`                                                | 2.4.3 (A)        |
@@ -455,6 +479,31 @@ token you most likely meant, including for common names such as `zip`
 
 Templates that render fields ramplint cannot see (`{{ form.email }}`,
 `{% include %}`, a `{% block %}` of a base template) are skipped.
+
+#### RL404 `field-label`
+
+```django
+{# ✗ #} {% for field in form %}<div class="field">{{ field }}</div>{% endfor %}
+{# ✗ #} {% render_field form.email class="input" placeholder="Email" %}
+{# ✓ #} {% for field in form %}<div class="field">{{ field.label_tag }} {{ field }}</div>{% endfor %}
+{# ✓ #} {% for field in form %}{{ field.as_field_group }}{% endfor %}
+```
+
+`{{ field }}` renders only the widget. Hidden fields and filters that render the
+label (`|as_crispy_field`) are skipped.
+
+#### RL405 `form-label-empty` and RL406 `widget-id` (in `forms.py`)
+
+```python
+class NewsletterForm(forms.Form):
+    # RL405: renders <label></label>; a placeholder is not a label
+    email = forms.EmailField(label="", widget=forms.EmailInput(attrs={"placeholder": "Email"}))
+
+
+class StarRatingWidget(forms.Widget):
+    # RL406: the template never renders widget.attrs, so the input has no id
+    template_name = "widgets/star_rating.html"
+```
 
 #### RL501 `button-name`
 

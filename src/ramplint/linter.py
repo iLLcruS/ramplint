@@ -71,11 +71,28 @@ def lint_source(
     return sorted(violations)
 
 
+def lint_python_source(
+    source: str, path: str = "<string>", rules: Iterable[Rule] | None = None, index: Any = None
+) -> list[Violation]:
+    """Lint a Django forms module (``forms.py``)."""
+    from ramplint.pyforms import lint_python_source as check
+
+    active = list(rules) if rules is not None else select_rules()
+    return sorted(
+        {
+            Violation(path=path, line=line, col=col, code=rule.code, name=rule.name, message=msg)
+            for line, col, rule, msg in check(source, path, active, index)
+        }
+    )
+
+
 def lint_file(
-    path: str | Path, rules: Iterable[Rule] | None = None, context: Any = None
+    path: str | Path, rules: Iterable[Rule] | None = None, context: Any = None, index: Any = None
 ) -> list[Violation]:
     path = Path(path)
     source = path.read_text(encoding="utf-8", errors="replace")
+    if path.suffix == ".py":
+        return lint_python_source(source, path=path.as_posix(), rules=rules, index=index)
     return lint_source(source, path=path.as_posix(), rules=rules, context=context)
 
 

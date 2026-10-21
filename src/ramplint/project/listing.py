@@ -83,6 +83,12 @@ def _plural(count: int, word: str) -> str:
     return f"{count} {word}{'' if count == 1 else 's'}"
 
 
+def _files_summary(files: list[Path]) -> str:
+    modules = sum(1 for path in files if path.suffix == ".py")
+    templates = _plural(len(files) - modules, "template")
+    return f"{templates} and {_plural(modules, 'forms module')}" if modules else templates
+
+
 def describe_projects(
     workspace: Workspace,
     paths: Sequence[str] | None,
@@ -135,7 +141,7 @@ def describe_projects(
             out.write("Warnings:\n")
             for warning in project["warnings"]:  # type: ignore[union-attr]
                 out.write(f"  {warning}\n")
-    out.write(f"\n{_plural(len(files), 'template')} to lint.\n")
+    out.write(f"\n{_files_summary(files)} to lint.\n")
 
 
 def print_verbose(workspace: Workspace, files: list[Path], err: TextIO) -> None:
@@ -153,4 +159,4 @@ def print_verbose(workspace: Workspace, files: list[Path], err: TextIO) -> None:
             err.write(f"ramplint:   warning: {warning}\n")
     if not projects:
         err.write("ramplint: no Django project found, linting every template under the paths\n")
-    err.write(f"ramplint: {_plural(len(files), 'template')} to lint\n")
+    err.write(f"ramplint: {_files_summary(files)} to lint\n")

@@ -20,6 +20,9 @@
 | [RL401](RL401.md) | `form-label` | Form controls must have an associated &lt;label>. |
 | [RL402](RL402.md) | `autocomplete-valid` | autocomplete must use valid autofill tokens. |
 | [RL403](RL403.md) | `label-for-target` | &lt;label for> must point to an element id in the template. |
+| [RL404](RL404.md) | `field-label` | Form fields rendered one by one must have their label. |
+| [RL405](RL405.md) | `form-label-empty` | Django form fields must not have an empty label. |
+| [RL406](RL406.md) | `widget-id` | Custom Django widgets must keep the id that labels point to. |
 | [RL501](RL501.md) | `button-name` | Buttons must have an accessible name. |
 | [RL502](RL502.md) | `link-name` | Links must have an accessible name. |
 | [RL503](RL503.md) | `no-positive-tabindex` | tabindex must not be greater than 0. |
