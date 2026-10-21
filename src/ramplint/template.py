@@ -7,7 +7,9 @@ the exact line and column of everything else:
 * ``{{ variable }}`` and text-producing tags such as ``{% trans %}`` or
   ``{% url %}`` become :data:`TEXT` - "some text will be here at runtime".
 * Tags that may render arbitrary markup (``{% include %}``, ``{% block %}``,
-  custom template tags) become :data:`MARKUP` - "unknown HTML will be here".
+  custom template tags) and variables that render HTML (form fields such as
+  ``{{ form.email }}``, ``{{ form.as_p }}``, ``{{ html|safe }}``) become
+  :data:`MARKUP` - "unknown HTML will be here".
 * Control-flow tags (``{% if %}``, ``{% for %}``, ...) and comments become
   plain whitespace.
 
@@ -25,11 +27,22 @@ from dataclasses import dataclass, field
 TEXT = ""
 #: Placeholder for markup that only exists at render time.
 MARKUP = ""
-PLACEHOLDERS = (TEXT, MARKUP)
+#: ``{% block %}`` of a child template (one with ``{% extends %}``): it renders
+#: the content written right after it, so it only hides markup if a template
+#: that extends this one overrides it.
+CHILD_BLOCK = ""
+PLACEHOLDERS = (TEXT, MARKUP, CHILD_BLOCK)
+
+
+def may_render_markup(text: str) -> bool:
+    """``text`` contains a template tag or variable that may render HTML."""
+    return MARKUP in text or CHILD_BLOCK in text
+
 
 _COMMENT_BLOCK_RE = re.compile(r"\{%-?\s*comment\b.*?%\}.*?\{%-?\s*endcomment\s*-?%\}", re.DOTALL)
 _TOKEN_RE = re.compile(r"\{\{.*?\}\}|\{%.*?%\}|\{#.*?#\}", re.DOTALL)
 _TAG_NAME_RE = re.compile(r"\{%-?\s*(\w+)")
+_EXTENDS_RE = re.compile(r"\{%-?\s*extends\b")
 _SUPPRESS_RE = re.compile(
     r"(?:\{#|<!--)\s*ramplint:\s*(ignore-file|ignore)\b(.*?)(?:#\}|-->)", re.DOTALL
 )
@@ -67,6 +80,37 @@ TEXT_TAGS = frozenset(
     }
 )
 # fmt: on
+
+
+# Variables that render HTML rather than text: forms, form fields and
+# anything marked safe.
+_FORM_NAME_RE = re.compile(r"^(\w+_)?(form|formset)$|^(bound_)?field$")
+#: Form/field attributes that render markup.
+_FORM_MARKUP_ATTRS = frozenset(
+    {
+        "as_p", "as_table", "as_ul", "as_div", "as_field_group", "as_widget",
+        "label_tag", "legend_tag", "errors", "non_field_errors", "management_form",
+        "media", "empty_form",
+    }
+)  # fmt: skip
+_MARKUP_FILTERS = frozenset({"safe", "safeseq", "as_crispy_field", "crispy", "as_crispy_errors"})
+
+
+def _renders_markup(token: str) -> bool:
+    """``{{ form.email }}``, ``{{ form.as_p }}``, ``{{ body|safe }}``, ..."""
+    expression = token[2:-2].strip("- \t\n")
+    variable, *filters = (part.strip() for part in expression.split("|"))
+    if any(f.split(":")[0].strip() in _MARKUP_FILTERS for f in filters):
+        return True
+    names = variable.split(".")
+    if not all(re.fullmatch(r"\w+", name) for name in names):
+        return False
+    if names[-1] in _FORM_MARKUP_ATTRS or names == ["block", "super"]:
+        return True
+    # form, field, form.email, form.fields.email, user_form.email ...
+    if not _FORM_NAME_RE.match(names[0]):
+        return False
+    return len(names) == 1 or (len(names) == 2 and names[0] != "field")
 
 
 @dataclass
@@ -173,18 +217,20 @@ def _placeholder(marker: str, token: str) -> str:
     return marker + _blank(token[1:])
 
 
-def _replace_token(match: re.Match[str]) -> str:
+def _replace_token(match: re.Match[str], child_template: bool = False) -> str:
     token = match.group(0)
     if token.startswith("{#"):
         return _blank(token)
     if token.startswith("{{"):
-        return _placeholder(TEXT, token)
+        return _placeholder(MARKUP if _renders_markup(token) else TEXT, token)
     name_match = _TAG_NAME_RE.match(token)
     name = name_match.group(1) if name_match else ""
     if name in SILENT_TAGS:
         return _blank(token)
     if name in TEXT_TAGS:
         return _placeholder(TEXT, token)
+    if name == "block" and child_template:
+        return _placeholder(CHILD_BLOCK, token)
     return _placeholder(MARKUP, token)
 
 
@@ -221,5 +267,6 @@ def prepare(source: str) -> PreparedTemplate:
     suppressions = _parse_suppressions(source)
     without_comments = _COMMENT_BLOCK_RE.sub(lambda m: _blank(m.group(0)), source)
     branches = _build_branch_map(without_comments)
-    html = _TOKEN_RE.sub(_replace_token, without_comments)
+    child_template = _EXTENDS_RE.search(without_comments) is not None
+    html = _TOKEN_RE.sub(lambda m: _replace_token(m, child_template), without_comments)
     return PreparedTemplate(html=html, suppressions=suppressions, branches=branches)

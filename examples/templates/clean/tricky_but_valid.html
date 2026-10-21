@@ -108,6 +108,16 @@
 <span lang="{{ review.language }}">{{ review.text }}</span>
 <div class="marquee">{{ news_ticker }}</div>
 
+{# Media: captions, a muted background video, a named chart and a PDF with a download link. #}
+<video controls src="{{ product.video.url }}"><track kind="captions" src="{{ product.captions.url }}" srclang="en"></video>
+<video autoplay muted loop playsinline src="{% static 'video/background.mp4' %}"></video>
+<svg role="img" viewBox="0 0 120 40"><title>{% trans "Sales grew 20% this year" %}</title><rect width="80" height="20"></rect></svg>
+<object data="{% static 'docs/prices.pdf' %}" type="application/pdf"><a href="{% static 'docs/prices.pdf' %}">{% trans "Download the price list (PDF)" %}</a></object>
+
+{# Access keys: unique, or the same key in exclusive branches. #}
+<a href="{% url 'search' %}" accesskey="f">{% trans "Find" %}</a>
+{% if user.is_authenticated %}<a href="{% url 'account' %}" accesskey="a">{% trans "Account" %}</a>{% else %}<a href="{% url 'login' %}" accesskey="a">{% trans "Log in" %}</a>{% endif %}
+
 {# Frames: title from a variable, and a hidden tracking frame. #}
 <iframe src="{{ video.embed_url }}" title="{{ video.title }}"></iframe>
 <iframe src="https://example.com/pixel" aria-hidden="true" tabindex="-1"></iframe>

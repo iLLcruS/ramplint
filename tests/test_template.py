@@ -135,3 +135,18 @@ def test_templated_attrs_on_later_lines():
     [node] = dom.parse(prepared.html, source=source).iter("a")
     assert node.is_dynamic("tabindex")
     assert not node.is_dynamic("href")
+
+
+def test_block_in_child_template():
+    from ramplint.template import CHILD_BLOCK, may_render_markup
+
+    base = prepare("{% block content %}{% endblock %}").html
+    child = prepare('{% extends "base.html" %}{% block content %}{% endblock %}').html
+    assert base.startswith(MARKUP)
+    assert CHILD_BLOCK in child and MARKUP not in child
+    assert may_render_markup(base) and may_render_markup(child)
+    assert not may_render_markup(prepare("{{ product.name }}").html)
+
+
+def test_block_super_renders_markup():
+    assert prepare("{{ block.super }}").html.startswith(MARKUP)

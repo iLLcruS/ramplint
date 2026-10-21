@@ -6,7 +6,9 @@ from collections.abc import Iterator
 from ramplint.dom import Node
 from ramplint.rules.aria import effective_role
 from ramplint.rules.base import rule
+from ramplint.rules.ids import rendered_elements
 from ramplint.rules.names import has_accessible_name, has_naming_attribute
+from ramplint.template import mutually_exclusive
 
 
 @rule(
@@ -186,3 +188,30 @@ def nested_interactive(root: Node) -> Iterator[tuple[Node, str]]:
             f"{kind} is nested inside {outer} (line {container.line}); screen readers "
             "and keyboards cannot reach the inner control reliably. Move it outside",
         )
+
+
+@rule(
+    code="RL506",
+    name="duplicate-accesskey",
+    summary="accesskey values must be unique within a template.",
+    wcag="Best practice (related to 2.1.4 Character Key Shortcuts (A))",
+)
+def duplicate_accesskey(root: Node) -> Iterator[tuple[Node, str]]:
+    seen: dict[str, list[Node]] = {}
+    for node in rendered_elements(root):
+        value = node.get("accesskey")
+        if value is None or node.is_dynamic("accesskey") or not value.strip():
+            continue
+        key = value.strip().lower()
+        previous = seen.setdefault(key, [])
+        clash = next(
+            (other for other in previous if not mutually_exclusive(other.branch, node.branch)),
+            None,
+        )
+        previous.append(node)
+        if clash is not None:
+            yield (
+                node,
+                f'accesskey="{value.strip()}" is already used on line {clash.line}; the '
+                "shortcut can only activate one of them. Pick a different key",
+            )

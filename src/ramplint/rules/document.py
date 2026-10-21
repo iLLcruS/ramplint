@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from ramplint.dom import Node
 from ramplint.rules import lang_data
 from ramplint.rules.base import rule
-from ramplint.template import MARKUP, PLACEHOLDERS
+from ramplint.template import PLACEHOLDERS, may_render_markup
 
 
 @rule(
@@ -103,7 +103,7 @@ def document_title(root: Node) -> Iterator[tuple[Node, str]]:
     title = _document_title(html)
     if title is None:
         head = next(html.iter("head"), None)
-        if MARKUP in (head or html).text():
+        if may_render_markup((head or html).text()):
             return  # {% block %} / {% include %} may render the <title>
         yield (
             head or html,

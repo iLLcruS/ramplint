@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<h2>{% trans "Contact us" %}</h2>
+
+<a href="{% url 'search' %}" accesskey="s">{% trans "Search" %}</a>
+
+<form method="post" action="{% url 'contact' %}">
+  {% csrf_token %}
+  <label for="name">{% trans "Name" %}</label>
+  <input type="text" id="name" name="name" autocomplete="name">
+
+  <label for="message">{% trans "Message" %}</label>
+  <textarea id="msg" name="message"></textarea>
+
+  <button type="submit" accesskey="s">{% trans "Send" %}</button>
+</form>
+{% endblock %}

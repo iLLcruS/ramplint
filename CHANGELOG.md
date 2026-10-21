@@ -36,8 +36,32 @@ and the project uses [Semantic Versioning](https://semver.org/).
     `english` → `en`), and `lang` / `xml:lang` with different languages (#50).
   - `RL605` meta-refresh: `<meta http-equiv="refresh">` with a delay (#51).
   - `RL606` obsolete-elements: `<marquee>` and `<blink>` (#52).
+- Media rules:
+  - `RL103` video-caption: `<video>` without a captions or subtitles track;
+    muted videos are skipped (#53).
+  - `RL104` svg-img-alt: `<svg role="img">` without a `<title>` or label (#54).
+  - `RL105` object-alt: `<object>` without fallback text or a label, and
+    `<embed>` without a `title` or label (#55).
+  - `RL106` media-autoplay: `<video autoplay>` and `<audio autoplay>` without
+    `muted` (#56).
+- Form and keyboard rules:
+  - `RL403` label-for-target: `<label for>` without a matching `id`, with hints
+    when the `for` matches a field's `name` or a similar id (#57).
+  - `RL506` duplicate-accesskey: the same `accesskey` used twice (#58).
 - Demo templates for the new rules: `catalog/category.html`, a standalone
-  `errors/500.html` and a landing page `promo/black_friday.html`.
+  `errors/500.html`, a landing page `promo/black_friday.html`,
+  `pages/about.html` and `pages/contact.html`.
+
+### Changed
+
+- Variables that render HTML are treated as unknown markup instead of text:
+  forms and form fields (`{{ form }}`, `{{ form.email }}`, `{{ field }}`,
+  `{{ form.as_p }}`, `{{ field.errors }}`), `{{ block.super }}`, and the
+  `|safe` and crispy-forms filters. Rules that look for ids, rows or other
+  elements no longer guess about markup they cannot see.
+- `{% block %}` in a child template (one with `{% extends %}`) is no longer
+  treated as a slot for unknown markup by `RL403`: the block renders the
+  content written in the template itself.
 
 ## [0.3.1] - 2026-10-21
 

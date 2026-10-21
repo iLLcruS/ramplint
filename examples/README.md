@@ -4,7 +4,7 @@ A tiny, fictional Django shop ("Shoply") whose templates are **intentionally
 inaccessible**. Use it to see ramplint in action:
 
 ```bash
-ramplint examples/            # all 47 problems
+ramplint examples/            # all 54 problems
 ramplint examples/ --select RL4
 ramplint examples/ --format json
 ```
@@ -21,8 +21,10 @@ ramplint examples/ --format json
 | `templates/catalog/category.html`       | 5        | Category links placed straight in a `<ul>`, a product card link that wraps an "Add to cart" button, `scope="column"`, an empty `<th>` above the actions column, a `<dl>` row wrapped in a `<span>` |
 | `templates/errors/500.html`             | 1        | A standalone error page (Django renders it without `base.html`) with no `<main>` landmark |
 | `templates/promo/black_friday.html`     | 4        | A standalone landing page: `lang="english"`, no `<title>`, a redirect after 15 seconds and a `<marquee>` |
+| `templates/pages/about.html`            | 4        | Media: a video without captions, an `<audio autoplay>` jingle, a chart `<svg role="img">` without a name and a PDF `<object>` without fallback text |
+| `templates/pages/contact.html`          | 3        | `<label for="message">` pointing to `id="msg"` (also reported by RL401 for the `<textarea>`) and the same `accesskey` on a link and a button |
 | `templates/orders/list_fixed.html`      | 0        | The same page as `list.html`, fixed. Diff the two files to see the fixes                           |
-| `templates/clean/tricky_but_valid.html` | 0        | Template patterns ramplint understands and does not report: `{{ form.as_table }}`, `{% include %}` inside tables, `id_for_label`, `{{ widget.attrs }}`, valid `autocomplete` tokens, translated button labels, an `<iframe>` titled from a variable, the same `id` in `{% if %}` / `{% else %}` branches, real links (`#fragment`, named anchor, URL from a variable), `tabindex` 0 / -1 / from a variable, a zoomable viewport, valid ARIA (roles, states, references, hidden content with `tabindex="-1"`), lists filled by `{% for %}`, `{% include %}` and `{% block %}`, a tab list built on `<ul role="tablist">`, `<dl>` with `<div>` groups, valid `scope` values, a visually hidden header and an empty top-left corner cell, a card with a link and a separate button, an immediate `meta refresh` redirect, valid and dynamic `lang` values on parts of the page, and an inline `ramplint: ignore` |
+| `templates/clean/tricky_but_valid.html` | 0        | Template patterns ramplint understands and does not report: `{{ form.as_table }}`, `{% include %}` inside tables, `id_for_label`, `{{ widget.attrs }}`, valid `autocomplete` tokens, translated button labels, an `<iframe>` titled from a variable, the same `id` in `{% if %}` / `{% else %}` branches, real links (`#fragment`, named anchor, URL from a variable), `tabindex` 0 / -1 / from a variable, a zoomable viewport, valid ARIA (roles, states, references, hidden content with `tabindex="-1"`), lists filled by `{% for %}`, `{% include %}` and `{% block %}`, a tab list built on `<ul role="tablist">`, `<dl>` with `<div>` groups, valid `scope` values, a visually hidden header and an empty top-left corner cell, a card with a link and a separate button, an immediate `meta refresh` redirect, valid and dynamic `lang` values on parts of the page, captioned and muted background videos, a named `<svg role="img">`, a PDF `<object>` with a download link, unique access keys, and an inline `ramplint: ignore` |
 
 Compare the broken and fixed order list side by side:
 

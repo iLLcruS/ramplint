@@ -7,13 +7,13 @@ from ramplint.rules.base import rule
 from ramplint.template import mutually_exclusive
 
 
-def _rendered_elements(root: Node) -> Iterator[Node]:
+def rendered_elements(root: Node) -> Iterator[Node]:
     """Elements that end up in the document (skips inert ``<template>`` content)."""
     for child in root.children:
         if isinstance(child, Node):
             yield child
             if child.tag != "template":
-                yield from _rendered_elements(child)
+                yield from rendered_elements(child)
 
 
 @rule(
@@ -24,7 +24,7 @@ def _rendered_elements(root: Node) -> Iterator[Node]:
 )
 def duplicate_id(root: Node) -> Iterator[tuple[Node, str]]:
     seen: dict[str, list[Node]] = {}
-    for node in _rendered_elements(root):
+    for node in rendered_elements(root):
         if node.is_dynamic("id"):
             continue
         element_id = (node.get("id") or "").strip()

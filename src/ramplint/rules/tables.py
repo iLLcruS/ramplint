@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from ramplint.dom import Node
 from ramplint.rules.base import rule
 from ramplint.rules.names import has_accessible_name
-from ramplint.template import MARKUP, PLACEHOLDERS
+from ramplint.template import PLACEHOLDERS, may_render_markup
 
 _STRUCTURAL = frozenset({"table", "thead", "tbody", "tfoot", "tr"})
 
@@ -26,7 +26,7 @@ def _is_dynamic(table: Node) -> bool:
     Examples: ``{% include "rows.html" %}``, ``{% block rows %}`` or
     ``{{ form.as_table }}`` placed directly between table tags.
     """
-    if MARKUP in table.text():
+    if may_render_markup(table.text()):
         return True
     for node in (table, *_own_nodes(table)):
         if node.tag not in _STRUCTURAL:
