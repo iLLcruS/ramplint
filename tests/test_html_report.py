@@ -7,6 +7,8 @@ from ramplint import lint_source
 from ramplint.linter import Violation
 from ramplint.reporters import REPORTERS
 
+B = "https://github.com/iLLcruS/ramplint/blob/main/docs/rules"
+
 VIOLATIONS = [
     Violation("templates/a.html", 3, 1, "RL101", "img-alt", '<img> is missing an alt="" & <b>'),
     Violation("templates/a.html", 9, 5, "RL502", "link-name", "<a> link has no name"),
@@ -37,7 +39,7 @@ def test_summary_and_grouping():
     )
     assert 'href="#file-1"' in html and 'href="#file-2"' in html
     # Rules are counted, most frequent first.
-    assert html.index('#rl101-img-alt">img-alt</a>') < html.index('#rl502-link-name">link-name</a>')
+    assert html.index('RL101.md">img-alt</a>') < html.index('RL502.md">link-name</a>')
 
 
 def test_messages_are_escaped():
@@ -107,8 +109,8 @@ def test_long_lines_are_truncated(tmp_path):
 
 def test_rules_link_to_documentation():
     html = render(VIOLATIONS)
-    assert 'href="https://github.com/iLLcruS/ramplint#rl101-img-alt"' in html
-    assert 'href="https://github.com/iLLcruS/ramplint#rl502-link-name"' in html
+    assert f'href="{B}/RL101.md"' in html
+    assert f'href="{B}/RL502.md"' in html
 
 
 def test_filters_are_progressive_enhancement():

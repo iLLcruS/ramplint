@@ -48,6 +48,10 @@ path = "src/ramplint/__init__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/ramplint"]
 
+# Ship the rule documentation inside the package for `ramplint --explain`.
+[tool.hatch.build.targets.wheel.force-include]
+"docs/rules" = "ramplint/rule_docs"
+
 [tool.hatch.build.targets.sdist]
 include = ["src", "tests", "examples", "docs", "README.md", "CHANGELOG.md", "LICENSE"]
 
