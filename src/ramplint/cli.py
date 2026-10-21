@@ -9,7 +9,13 @@ from pathlib import Path
 from ramplint import __version__
 from ramplint.config import ConfigError, load_config
 from ramplint.linter import DEFAULT_EXTENSIONS, Violation, iter_template_files, lint_file
-from ramplint.reporters import REPORTERS, available_formats, summary_line
+from ramplint.reporters import (
+    REPORTERS,
+    STATISTICS_WRITERS,
+    WriteReport,
+    available_formats,
+    summary_line,
+)
 from ramplint.rules import all_rules, select_rules, unknown_selectors
 
 EXIT_OK = 0
@@ -65,6 +71,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the report to FILE instead of stdout (missing folders are created)",
     )
     parser.add_argument("--config", type=Path, metavar="PATH", help="path to a pyproject.toml")
+    parser.add_argument(
+        "--statistics",
+        action="store_true",
+        help="show the number of problems per rule instead of every problem (text or json)",
+    )
     parser.add_argument("--no-color", action="store_true", help="disable colored output")
     parser.add_argument(
         "--exit-zero", action="store_true", help="exit with 0 even if problems are found"
@@ -96,12 +107,16 @@ def _silence_stdout() -> None:
 
 
 def _write_report_file(
-    path: Path, output_format: str, violations: list[Violation], files_checked: int
+    path: Path,
+    output_format: str,
+    write: WriteReport,
+    violations: list[Violation],
+    files_checked: int,
 ) -> bool:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8", newline="\n") as fh:
-            REPORTERS[output_format].write(violations, files_checked, fh, False)
+            write(violations, files_checked, fh, False)
     except OSError as exc:
         print(f"ramplint: error: cannot write report to {path}: {exc}", file=sys.stderr)
         return False
@@ -116,6 +131,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.list_rules:
         _list_rules()
         return EXIT_OK
+
+    if args.statistics and args.format not in (None, *STATISTICS_WRITERS):
+        supported = " or ".join(sorted(STATISTICS_WRITERS))
+        print(
+            f"ramplint: error: --statistics works with --format {supported}, not {args.format}",
+            file=sys.stderr,
+        )
+        return EXIT_ERROR
 
     try:
         config = load_config(args.config)
@@ -144,19 +167,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"ramplint: error: no such file or directory: {exc}", file=sys.stderr)
         return EXIT_ERROR
 
-    if args.output is not None:
-        # Annotations only make sense on stdout, so a file defaults to text.
+    if args.output is not None or args.statistics:
+        # Annotations only make sense for the full report on stdout.
         output_format = args.format or "text"
-        if not _write_report_file(args.output, output_format, violations, files_checked):
-            return EXIT_ERROR
     else:
         output_format = args.format or (
             "github" if os.environ.get("GITHUB_ACTIONS") == "true" else "text"
         )
+    write: WriteReport = (
+        STATISTICS_WRITERS[output_format] if args.statistics else REPORTERS[output_format].write
+    )
+
+    if args.output is not None:
+        if not _write_report_file(args.output, output_format, write, violations, files_checked):
+            return EXIT_ERROR
+    else:
         try:
-            REPORTERS[output_format].write(
-                violations, files_checked, sys.stdout, _use_color(args.no_color)
-            )
+            write(violations, files_checked, sys.stdout, _use_color(args.no_color))
             sys.stdout.flush()
         except BrokenPipeError:
             # The reader went away (e.g. `ramplint | head`). Silence the error that
