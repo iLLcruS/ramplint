@@ -15,7 +15,9 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import TextIO
 
@@ -47,12 +49,56 @@ def reporter(name: str, description: str) -> Callable[[WriteReport], WriteReport
     return decorator
 
 
+@dataclass(frozen=True)
+class ReportContext:
+    """What was checked: template files (default) or pages of a site."""
+
+    #: Counted unit in summaries: ``file`` or ``page``.
+    unit: str = "file"
+    #: Name of a checked item in reports: ``template`` or ``page``.
+    noun: str = "template"
+    #: Viewports of a browser scan; shown per problem when there are several.
+    viewports: tuple[str, ...] = ()
+
+    @property
+    def browser(self) -> bool:
+        return self.unit == "page"
+
+
+_DEFAULT_CONTEXT = ReportContext()
+_CONTEXT: ContextVar[ReportContext | None] = ContextVar("ramplint_report_context", default=None)
+
+
+def report_context() -> ReportContext:
+    return _CONTEXT.get() or _DEFAULT_CONTEXT
+
+
+@contextmanager
+def browser_report(viewports: Sequence[str]) -> Iterator[ReportContext]:
+    """Reports written inside this block describe pages of a browser scan."""
+    context = ReportContext(unit="page", noun="page", viewports=tuple(viewports))
+    token = _CONTEXT.set(context)
+    try:
+        yield context
+    finally:
+        _CONTEXT.reset(token)
+
+
+def browser_location(v: Violation) -> str:
+    """``URL selector`` plus the viewports when the scan used several."""
+    location = f"{v.path} {v.selector}" if v.selector else v.path
+    if v.viewport and len(report_context().viewports) > 1:
+        location += f" @{v.viewport}"
+    return location
+
+
 def available_formats() -> list[str]:
     return sorted(REPORTERS)
 
 
 def summary_line(violations: Sequence[Violation], files_checked: int) -> str:
-    files_word = "file" if files_checked == 1 else "files"
+    unit = report_context().unit
+    files_word = unit if files_checked == 1 else f"{unit}s"
     if not violations:
         return f"All checks passed ({files_checked} {files_word})."
     affected = len({v.path for v in violations})
@@ -128,7 +174,8 @@ def report_text(
     violations: Sequence[Violation], files_checked: int, out: TextIO, color: bool = False
 ) -> None:
     for v in violations:
-        location = _paint(f"{v.path}:{v.line}:{v.col}:", _BOLD, color=color)
+        where = browser_location(v) if v.in_browser else f"{v.path}:{v.line}:{v.col}"
+        location = _paint(f"{where}:", _BOLD, color=color)
         code = _paint(v.code, _RED, _BOLD, color=color)
         name = _paint(f"[{v.name}]", _DIM, color=color)
         out.write(f"{location} {code} {v.message} {name}\n")
@@ -167,8 +214,13 @@ def report_github(
     violations: Sequence[Violation], files_checked: int, out: TextIO, color: bool = False
 ) -> None:
     for v in violations:
-        file = _escape_github(v.path, property_value=True)
         title = _escape_github(f"{v.code} {v.name}", property_value=True)
+        if v.in_browser:
+            # No file to attach the annotation to; it shows in the run summary.
+            message = _escape_github(f"{browser_location(v)}: {v.message}")
+            out.write(f"::error title={title}::{message}\n")
+            continue
+        file = _escape_github(v.path, property_value=True)
         out.write(
             f"::error file={file},line={v.line},col={v.col},title={title}::"
             f"{_escape_github(v.message)}\n"

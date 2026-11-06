@@ -14,6 +14,7 @@ authors = [{ name = "Vladyslav Rostovskyi", email = "rostovskii.1020@gmail.com" 
 keywords = [
     "accessibility", "a11y", "wcag", "aria", "screen-reader", "django", "jinja2",
     "templates", "linter", "pre-commit", "django-templates", "jinja", "django-forms",
+    "playwright", "browser",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -35,7 +36,10 @@ classifiers = [
 dependencies = ["tomli>=1.1; python_version < '3.11'"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "pytest-cov>=4", "ruff>=0.6", "jsonschema>=4"]
+# greenlet: coverage follows Playwright's greenlets (see [tool.coverage.run]).
+dev = ["pytest>=7", "pytest-cov>=4", "ruff>=0.6", "jsonschema>=4", "greenlet>=3"]
+# Browser scan mode (ramplint https://...). Also run: playwright install chromium
+browser = ["playwright>=1.45"]
 
 [project.scripts]
 ramplint = "ramplint.cli:main"
@@ -65,10 +69,14 @@ include = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "browser: needs Playwright and Chromium (pip install -e .[browser]; playwright install chromium)",
+]
 
 [tool.coverage.run]
 source = ["ramplint"]
 branch = true
+concurrency = ["thread", "greenlet"]
 
 [tool.coverage.report]
 fail_under = 95

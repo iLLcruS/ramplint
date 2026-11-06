@@ -21,6 +21,7 @@ WHEEL_REQUIRED = [
     "ramplint/py.typed",
     "ramplint/report.css",
     "ramplint/report.js",
+    "ramplint/browser/collect.js",
     "ramplint/rule_docs/README.md",
 ]
 SDIST_REQUIRED = [

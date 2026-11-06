@@ -6,6 +6,27 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Browser scan mode (preview): `ramplint http://localhost:8000/` opens the
+  pages in Chromium and runs the rules on the rendered HTML, including markup
+  added by JavaScript. Needs the new `browser` extra
+  (`pip install "ramplint[browser]"` and `playwright install chromium`).
+  - Problems name the URL, a CSS selector and the viewport(s); hidden elements
+    are skipped and accessible names computed by Chromium are trusted.
+  - New options `--viewport`, `--timeout`, `--delay`, `--wait-for`, `--headed`
+    and `--save-snapshots`, and a `[tool.ramplint.browser]` config table.
+  - Choosing pages: `--max-pages`, `--include` and `--exclude-url` (globs on
+    the path or the full URL); `--per-pattern` and `--no-crawl` for the
+    crawler. Logout URLs are never opened; `deny` in the config adds patterns.
+  - Config keys `base-url`, `max-pages`, `per-pattern`, `crawl`, `include`,
+    `exclude` and `deny`. With `base-url`, browser options without URLs scan
+    that site.
+  - Ctrl+C closes the browser and exits with 130.
+  - Text, JSON, GitHub, SARIF and HTML reports show browser findings.
+- `Violation` has optional `url`, `selector`, `viewport` and `bbox` fields
+  (`None` for templates; template results and JSON output are unchanged).
+
 ## [0.6.0] - 2026-10-21
 
 ### Added

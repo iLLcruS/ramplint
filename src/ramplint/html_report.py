@@ -18,7 +18,7 @@ from typing import TextIO
 
 from ramplint import __version__
 from ramplint.linter import Violation
-from ramplint.reporters import reporter
+from ramplint.reporters import report_context, reporter
 from ramplint.rules import REGISTRY
 
 _CSS = files("ramplint").joinpath("report.css").read_text(encoding="utf-8")
@@ -29,10 +29,11 @@ def _plural(count: int, word: str) -> str:
 
 
 def _headline(violations: Sequence[Violation], files_checked: int) -> str:
+    noun = report_context().noun
     if not violations:
-        return f"No accessibility problems in {_plural(files_checked, 'template')}"
+        return f"No accessibility problems in {_plural(files_checked, noun)}"
     affected = len({v.path for v in violations})
-    return f"{_plural(len(violations), 'accessibility problem')} in {_plural(affected, 'template')}"
+    return f"{_plural(len(violations), 'accessibility problem')} in {_plural(affected, noun)}"
 
 
 _CONTEXT_LINES = 2
@@ -86,6 +87,19 @@ def _rule_link(code: str, name: str) -> str:
     return f'<a class="rule-name" href="{escape(rule.docs_url)}">{label}</a>'
 
 
+def _location_cell(v: Violation) -> str:
+    if v.in_browser:
+        return escape((v.viewport or "").replace(",", ", "))
+    return f"{v.line}:{v.col}"
+
+
+def _element(v: Violation) -> str:
+    """CSS selector of the element a browser finding is about."""
+    if not v.selector:
+        return ""
+    return f'<code class="selector">{escape(v.selector)}</code>'
+
+
 def _filters(violations: Sequence[Violation]) -> str:
     """Filter controls. Hidden until the script runs, so the page still works
     in email clients and viewers that block JavaScript."""
@@ -98,14 +112,15 @@ def _filters(violations: Sequence[Violation]) -> str:
         f'<option value="file-{index}">{escape(path)}</option>'
         for index, path in enumerate(paths, start=1)
     )
+    noun = report_context().noun
     return (
         '<form class="filters box" id="filters" hidden>'
         '<h2 id="filters-title">Filter problems</h2>'
         '<div class="filter-row">'
         '<label for="filter-rule">Rule</label>'
         f'<select id="filter-rule"><option value="">All rules</option>{rule_options}</select>'
-        '<label for="filter-file">Template</label>'
-        f'<select id="filter-file"><option value="">All templates</option>{file_options}</select>'
+        f'<label for="filter-file">{noun.capitalize()}</label>'
+        f'<select id="filter-file"><option value="">All {noun}s</option>{file_options}</select>'
         '<button type="reset">Show all</button>'
         "</div>"
         f'<p id="filter-status" class="filter-status" aria-live="polite" '
@@ -149,22 +164,24 @@ def _file_sections(violations: Sequence[Violation]) -> tuple[str, str]:
         links.append(
             f'<li><a href="#{anchor}">{escape(path)}</a><span class="count">{count}</span></li>'
         )
-        lines = sources.lines(path)
+        browser = items[0].in_browser
+        lines = None if browser else sources.lines(path)
         rows = "".join(
             f'<tr data-rule="{escape(v.code)}">'
-            f'<td class="loc">{v.line}:{v.col}</td>'
+            f'<td class="loc">{_location_cell(v)}</td>'
             f'<th scope="row"><span class="code">{escape(v.code)}</span>'
             f"{_rule_link(v.code, v.name)}</th>"
-            f'<td class="message">{escape(v.message)}{_snippet(lines, v.line)}</td>'
+            f'<td class="message">{escape(v.message)}{_element(v)}{_snippet(lines, v.line)}</td>'
             "</tr>"
             for v in items
         )
+        loc_header = "Viewport" if browser else "Line"
         sections.append(
             f'<section class="file" id="{anchor}" aria-labelledby="{anchor}-title">'
             f'<h2 id="{anchor}-title">{escape(path)}<span class="count">{count}</span></h2>'
             '<div class="box"><table class="problems">'
             '<colgroup><col class="col-loc"><col class="col-rule"><col></colgroup>'
-            '<thead><tr><th scope="col">Line</th><th scope="col">Rule</th>'
+            f'<thead><tr><th scope="col">{loc_header}</th><th scope="col">Rule</th>'
             '<th scope="col">Problem</th></tr></thead>'
             f"<tbody>{rows}</tbody></table></div></section>"
         )
@@ -176,6 +193,7 @@ def report_html(
     violations: Sequence[Violation], files_checked: int, out: TextIO, color: bool = False
 ) -> None:
     headline = _headline(violations, files_checked)
+    noun = report_context().noun
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     affected = len({v.path for v in violations})
 
@@ -186,7 +204,7 @@ def report_html(
             '<section class="box" aria-labelledby="by-rule"><h2 id="by-rule">Problems by rule</h2>'
             f"{_rule_table(violations)}</section>"
             '<nav class="box" aria-labelledby="by-file">'
-            '<h2 id="by-file">Templates with problems</h2>'
+            f'<h2 id="by-file">{noun.capitalize()}s with problems</h2>'
             f'<ul class="files">{file_links}</ul></nav>'
             "</div>"
             f"{_filters(violations)}"
@@ -194,7 +212,7 @@ def report_html(
         )
     else:
         body = (
-            '<p class="clean">Every checked template passed all '
+            f'<p class="clean">Every checked {noun} passed all '
             f"{_plural(len(REGISTRY), 'rule')}.</p>"
         )
 
@@ -212,9 +230,9 @@ def report_html(
         f'<p class="meta">ramplint {escape(__version__)} accessibility report, '
         f"generated {generated}</p>"
         '<dl class="figures">'
-        f"<div><dt>Templates checked</dt><dd>{files_checked}</dd></div>"
+        f"<div><dt>{noun.capitalize()}s checked</dt><dd>{files_checked}</dd></div>"
         f"<div><dt>Problems</dt><dd>{len(violations)}</dd></div>"
-        f"<div><dt>Templates with problems</dt><dd>{affected}</dd></div>"
+        f"<div><dt>{noun.capitalize()}s with problems</dt><dd>{affected}</dd></div>"
         "</dl></div></header>\n"
         f'<main class="wrap">{body}</main>\n'
         '<footer class="wrap">Generated by '

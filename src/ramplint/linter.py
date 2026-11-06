@@ -3,7 +3,7 @@ from __future__ import annotations
 import fnmatch
 import os
 from collections.abc import Iterable, Iterator
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +23,10 @@ DEFAULT_EXCLUDE_DIRS = frozenset(
 # fmt: on
 
 
+#: Fields only set for problems found in a rendered page (browser mode).
+BROWSER_FIELDS = ("url", "selector", "viewport", "bbox")
+
+
 @dataclass(frozen=True, order=True)
 class Violation:
     path: str
@@ -31,9 +35,29 @@ class Violation:
     code: str
     name: str
     message: str
+    # Browser mode only. Not part of equality or ordering, so template results
+    # behave exactly as before. ``path`` is the URL and ``line``/``col`` point
+    # into the rendered HTML.
+    url: str | None = field(default=None, compare=False)
+    #: Unique CSS selector of the element in the rendered page.
+    selector: str | None = field(default=None, compare=False)
+    #: Viewport(s) the problem was seen in, e.g. ``desktop`` or ``desktop,mobile``.
+    viewport: str | None = field(default=None, compare=False)
+    #: ``(x, y, width, height)`` of the element in CSS pixels.
+    bbox: tuple[float, float, float, float] | None = field(default=None, compare=False)
+
+    @property
+    def in_browser(self) -> bool:
+        return self.url is not None
 
     def to_dict(self) -> dict[str, object]:
-        return asdict(self)
+        data = asdict(self)
+        for key in BROWSER_FIELDS:
+            if data[key] is None:
+                del data[key]
+        if "bbox" in data:
+            data["bbox"] = list(data["bbox"])
+        return data
 
 
 def lint_source(

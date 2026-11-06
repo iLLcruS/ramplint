@@ -62,6 +62,7 @@ See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/example
 - **Zero dependencies.** Pure Python standard library (plus `tomli` on Python < 3.11).
 - **Made for CI.** Exit codes, JSON output, GitHub Actions annotations and a pre-commit hook.
 - **Fast.** No browser and no rendering. A whole project is checked in well under a second.
+- **Also in the browser.** Pass URLs to check rendered pages in Chromium (`pip install "ramplint[browser]"`).
 
 ## Installation
 
@@ -253,6 +254,72 @@ It works with `--format text` (default) and `--format json`.
 | `0`       | No problems found            |
 | `1`       | Problems found               |
 | `2`       | Usage or configuration error |
+
+## Browser scan (preview)
+
+Templates are not the whole page: JavaScript adds markup and some problems only
+exist once a page is rendered. Pass URLs instead of paths and ramplint opens
+them in Chromium and runs the rules on the page the browser actually shows.
+
+```bash
+pip install "ramplint[browser]"
+playwright install chromium
+
+ramplint http://localhost:8000/ http://localhost:8000/products/
+ramplint http://localhost:8000/ --viewport desktop,mobile
+ramplint http://localhost:8000/ --format html -o a11y-report.html
+```
+
+```text
+http://localhost:8000/ body > main > button:nth-of-type(2): RL501 <button> has no accessible name; add text or an aria-label (icon-only buttons need one) [button-name]
+http://localhost:8000/ #logo @mobile: RL101 <img> is missing an alt attribute (use alt="" for decorative images) [img-alt]
+```
+
+- Every problem names the page, a CSS selector of the element and, when you
+  scan several viewports, the ones it was seen in.
+- Elements that are not rendered (`display: none`, `visibility: hidden`) are
+  skipped, and when Chromium computes an accessible name (for example one set
+  by JavaScript), ramplint trusts it.
+- `<!-- ramplint: ignore ... -->` comments work in rendered pages too.
+- Pages that fail to load, return an error status or are not HTML are reported
+  on stderr; ramplint exits with 2 when no page could be checked.
+
+Options: `--viewport` (`desktop`, `tablet`, `mobile` or `WIDTHxHEIGHT`),
+`--timeout SECONDS`, `--delay MS`, `--wait-for SELECTOR` (for pages that render
+late), `--headed` and `--save-snapshots DIR` (rendered HTML, element data and
+screenshots of every page).
+
+Which pages: `--max-pages N` (default 50), `--include GLOB` and
+`--exclude-url GLOB` (both repeatable). A pattern is matched against the path
+and query (`/admin/*`, `*?page=*`), or against the whole URL when it contains
+`://`. Logout links (`*/logout*`, `*/signout*` and similar) are never opened, so
+a scan does not end your session; `deny` in the config adds more. `--no-crawl`
+and `--per-pattern N` are for crawling, which comes with 0.7.0; until then only
+the URLs you pass are checked.
+
+The same settings go in `pyproject.toml`:
+
+```toml
+[tool.ramplint.browser]
+base-url = "http://localhost:8000/"   # used when you pass browser options but no URL
+viewports = ["desktop", "mobile"]
+timeout = 30
+delay = 0
+wait-for = "#app"
+max-pages = 50
+per-pattern = 2
+crawl = true
+include = ["/shop/*"]
+exclude = ["/admin/*"]
+deny = ["*/reset/*"]
+```
+
+With `base-url` set, `ramplint --viewport mobile` (or any other browser option)
+checks that site; plain `ramplint` still checks your templates. Ctrl+C stops a
+scan, closes the browser and exits with 130.
+
+Crawling a whole site, template source maps, rendered-page rules (contrast,
+focus, target size) and a report with screenshots are coming in 0.7.0.
 
 ## Rules
 

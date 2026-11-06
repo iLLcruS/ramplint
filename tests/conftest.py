@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import functools
+import http.server
 import textwrap
+import threading
+from pathlib import Path
 
 import pytest
 
@@ -20,3 +24,37 @@ def lint():
         return [(v.code, v.line) for v in violations]
 
     return _lint
+
+
+SITES = Path(__file__).parent / "sites"
+
+
+class _QuietHandler(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, format, *args):  # noqa: A002 - signature from the base class
+        pass
+
+
+@pytest.fixture(scope="session")
+def site_url():
+    """Base URL of a local web server that serves ``tests/sites/``."""
+    handler = functools.partial(_QuietHandler, directory=str(SITES))
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield f"http://127.0.0.1:{server.server_address[1]}"
+    server.shutdown()
+    server.server_close()
+
+
+@pytest.fixture(scope="session")
+def chromium_available() -> bool:
+    """Skip browser tests when Playwright or Chromium is not installed."""
+    from ramplint.browser.options import BrowserOptions
+    from ramplint.browser.session import BrowserSession, BrowserUnavailable
+
+    try:
+        with BrowserSession(BrowserOptions()):
+            pass
+    except BrowserUnavailable as exc:
+        pytest.skip(f"browser tests need Chromium: {exc}")
+    return True

@@ -33,6 +33,32 @@ def _artifact_uri(path: str) -> str:
     return quote(candidate.as_posix())
 
 
+def _location(v: Violation) -> dict[str, object]:
+    if not v.in_browser:
+        return {
+            "physicalLocation": {
+                "artifactLocation": {"uri": _artifact_uri(v.path)},
+                "region": {"startLine": v.line, "startColumn": v.col},
+            }
+        }
+    # A page of a running site: the URL is the artifact, the element a logical location.
+    location: dict[str, object] = {
+        "physicalLocation": {"artifactLocation": {"uri": v.path}},
+    }
+    if v.selector:
+        location["logicalLocations"] = [{"fullyQualifiedName": v.selector, "kind": "element"}]
+    return location
+
+
+def _browser_properties(v: Violation) -> dict[str, object]:
+    properties: dict[str, object] = {"url": v.url}
+    if v.selector:
+        properties["selector"] = v.selector
+    if v.viewport:
+        properties["viewports"] = v.viewport.split(",")
+    return properties
+
+
 def _rule_descriptors() -> list[dict[str, object]]:
     descriptors = []
     for rule in all_rules():
@@ -74,14 +100,8 @@ def report_sarif(
             **({"ruleIndex": rule_index[v.code]} if v.code in rule_index else {}),
             "level": "error",
             "message": {"text": v.message},
-            "locations": [
-                {
-                    "physicalLocation": {
-                        "artifactLocation": {"uri": _artifact_uri(v.path)},
-                        "region": {"startLine": v.line, "startColumn": v.col},
-                    }
-                }
-            ],
+            "locations": [_location(v)],
+            **({"properties": _browser_properties(v)} if v.in_browser else {}),
         }
         for v in violations
     ]

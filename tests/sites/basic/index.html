@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shop</title>
+</head>
+<body>
+<header><a href="/">Home</a></header>
+<main>
+  <h1>Products</h1>
+  <!-- JavaScript gives this button its name: no problem. -->
+  <button id="named-by-js"></button>
+  <!-- JavaScript removes the text of this one: a problem. -->
+  <button id="emptied-by-js">Add to cart</button>
+  <!-- Named through aria-labelledby. -->
+  <button aria-labelledby="save-label"></button>
+  <span id="save-label">Save for later</span>
+  <a href="/cart/" id="empty-link"></a>
+  <img src="logo.png" id="no-alt">
+  <div style="display: none"><img src="hidden.png" id="hidden-img"></div>
+  <div id="list"></div>
+  <!-- ramplint: ignore img-alt -->
+  <img src="ignored.png">
+</main>
+<script>
+  document.getElementById("named-by-js").textContent = "Open menu";
+  document.getElementById("emptied-by-js").textContent = "";
+  document.getElementById("list").innerHTML = '<img src="added.png" id="added-img">';
+</script>
+</body>
+</html>
