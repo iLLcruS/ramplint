@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Polling</title></head>
+<body><main><h1>Live data</h1><p id="value">-</p></main>
+<script>
+// Asks the server every 100 ms, so the network is never idle.
+setInterval(() => fetch("data.json?" + Date.now()).then((r) => r.text()).then((t) => {
+  document.getElementById("value").textContent = t;
+}), 100);
+</script>
+</body>
+</html>

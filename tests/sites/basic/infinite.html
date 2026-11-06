@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Infinite</title>
+<style>section { height: 900px; }</style></head>
+<body><main>
+<h1>Never ends</h1>
+<section>Start</section>
+<div id="sentinel"></div>
+</main>
+<script>
+// Infinite scroll: every time the bottom shows, another screen is added.
+let count = 0;
+new IntersectionObserver((entries) => {
+  if (!entries[0].isIntersecting) return;
+  count += 1;
+  document.getElementById("sentinel").insertAdjacentHTML("beforebegin", `<section>Item ${count}</section>`);
+}).observe(document.getElementById("sentinel"));
+</script>
+</body>
+</html>

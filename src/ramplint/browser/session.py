@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import contextlib
 import json
 import time
@@ -10,7 +11,7 @@ from types import TracebackType
 from typing import Any
 
 from ramplint.browser.options import BrowserOptions, Viewport
-from ramplint.browser.snapshot import ElementInfo, PageSnapshot
+from ramplint.browser.snapshot import Box, ElementInfo, PageSnapshot, image_extension, padded_box
 
 INSTALL_HINT = 'pip install "ramplint[browser]" && playwright install chromium'
 
@@ -18,6 +19,14 @@ COLLECT_JS = files("ramplint.browser").joinpath("collect.js").read_text(encoding
 #: Network idle is a nice-to-have: pages that poll never reach it.
 NETWORK_IDLE_TIMEOUT = 5.0
 JPEG_QUALITY = 70
+#: Lazy-loaded content: scroll down one screen at a time, at most this many
+#: screens (infinite scroll never ends), pausing so the page can load more.
+MAX_SCROLL_SCREENS = 20
+SCROLL_PAUSE_MS = 150
+#: Network idle after scrolling back up (lazy images that just started loading).
+SETTLE_TIMEOUT = 2.0
+#: Pixels of context around an element crop.
+CROP_PADDING = 8
 
 
 class BrowserUnavailable(Exception):
@@ -155,10 +164,44 @@ class BrowserSession:
                     snapshot.error = f"{self.options.wait_for!r} did not appear in {timeout:g}s"
                     return snapshot
 
+            if self._scroll_through(page, deadline):
+                with contextlib.suppress(PlaywrightTimeout):
+                    page.wait_for_load_state("networkidle", timeout=remaining_ms(SETTLE_TIMEOUT))
             self._collect(page, snapshot)
         finally:
             page.close()
         return snapshot
+
+    @staticmethod
+    def _scroll_through(page: Any, deadline: float) -> bool:
+        """Scroll to the bottom so lazy content loads, then back to the top.
+
+        Stops after :data:`MAX_SCROLL_SCREENS` screens or when the time for the
+        page is nearly up. Returns ``False`` for pages that fit on one screen.
+        """
+        if page.evaluate("() => document.documentElement.scrollHeight <= window.innerHeight"):
+            return False
+        for _ in range(MAX_SCROLL_SCREENS):
+            if deadline - time.monotonic() < 1.0:
+                break
+            at_bottom = page.evaluate(
+                """async (pause) => {
+                    window.scrollBy(0, window.innerHeight);
+                    await new Promise((resolve) => setTimeout(resolve, pause));
+                    const root = document.documentElement;
+                    return window.scrollY + window.innerHeight >= root.scrollHeight - 1;
+                }""",
+                SCROLL_PAUSE_MS,
+            )
+            if at_bottom:
+                break
+        page.evaluate("() => window.scrollTo(0, 0)")
+        return True
+
+    def _screenshot(self, page: Any, full_page: bool = False, **kwargs: Any) -> bytes:
+        fmt = self.options.screenshot_format
+        quality = {"quality": JPEG_QUALITY} if fmt == "jpeg" else {}
+        return page.screenshot(type=fmt, full_page=full_page, **quality, **kwargs)
 
     def _collect(self, page: Any, snapshot: PageSnapshot) -> None:
         data = json.loads(page.evaluate(COLLECT_JS))
@@ -175,10 +218,8 @@ class BrowserSession:
             )
         self._accessibility_tree(page, snapshot)
         snapshot.html = page.content()
-        snapshot.screenshot = page.screenshot(type="jpeg", quality=JPEG_QUALITY)
-        snapshot.full_screenshot = page.screenshot(
-            type="jpeg", quality=JPEG_QUALITY, full_page=True
-        )
+        snapshot.screenshot = self._screenshot(page)
+        snapshot.full_screenshot = self._screenshot(page, full_page=True)
 
     @staticmethod
     def _accessibility_tree(page: Any, snapshot: PageSnapshot) -> None:
@@ -211,3 +252,57 @@ class BrowserSession:
             element.role = (ax_node.get("role") or {}).get("value") or None
             name = (ax_node.get("name") or {}).get("value")
             element.name = name if isinstance(name, str) else None
+
+    # -- element crops -------------------------------------------------------
+    def crops(
+        self, snapshot: PageSnapshot, boxes: list[Box], padding: float = CROP_PADDING
+    ) -> list[bytes | None]:
+        """Pictures of page elements, cut from the full-page screenshot.
+
+        Works on saved snapshots too: the page itself is not opened again.
+        Each box is grown by ``padding`` pixels; ``None`` for elements that are
+        not on the screenshot (hidden, zero size) or when there is none.
+        """
+        image = snapshot.full_screenshot
+        if image is None or not boxes:
+            return [None] * len(boxes)
+        is_png = image_extension(image) == "png"
+        mime, fmt = ("image/png", "png") if is_png else ("image/jpeg", "jpeg")
+        quality = {} if is_png else {"quality": JPEG_QUALITY}
+        context = self._browser.new_context(device_scale_factor=1)
+        try:
+            page = context.new_page()
+            data = base64.b64encode(image).decode("ascii")
+            page.set_content(
+                "<style>html,body{margin:0}img{display:block}</style>"
+                f'<img src="data:{mime};base64,{data}">'
+            )
+            width, height = page.evaluate(
+                """async () => {
+                    const img = document.images[0];
+                    await img.decode();
+                    return [img.naturalWidth, img.naturalHeight];
+                }"""
+            )
+            result: list[bytes | None] = []
+            for box in boxes:
+                clip = padded_box(box, padding, (width, height))
+                if clip is None:
+                    result.append(None)
+                    continue
+                x, y, w, h = clip
+                result.append(
+                    page.screenshot(
+                        type=fmt,
+                        full_page=True,
+                        clip={"x": x, "y": y, "width": w, "height": h},
+                        **quality,
+                    )
+                )
+            return result
+        finally:
+            context.close()
+
+    def crop(self, snapshot: PageSnapshot, box: Box, padding: float = CROP_PADDING) -> bytes | None:
+        """One element crop; see :meth:`crops`."""
+        return self.crops(snapshot, [box], padding)[0]

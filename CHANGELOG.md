@@ -23,6 +23,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
     `exclude` and `deny`. With `base-url`, browser options without URLs scan
     that site.
   - Ctrl+C closes the browser and exits with 130.
+  - Pages are scrolled to the bottom before they are checked, so lazy-loaded
+    content is included (at most 20 screens, within `--timeout`).
+  - `--screenshot-format png` and `screenshot-format` in the config
+    (default: JPEG, quality 70).
+  - `BrowserSession.crops()` cuts element pictures with a few pixels of
+    padding out of the full-page screenshot, also from saved snapshots.
   - Text, JSON, GitHub, SARIF and HTML reports show browser findings.
 - `Violation` has optional `url`, `selector`, `viewport` and `bbox` fields
   (`None` for templates; template results and JSON output are unchanged).

@@ -81,7 +81,12 @@ def load_config(path: Path | None = None, start: Path | None = None) -> Config:
 
 def _browser_section(path: Path, section: object) -> dict[str, Any]:
     """Validate ``[tool.ramplint.browser]``."""
-    from ramplint.browser.options import DEFAULT_DENY, is_url, parse_viewport
+    from ramplint.browser.options import (
+        DEFAULT_DENY,
+        SCREENSHOT_FORMATS,
+        is_url,
+        parse_viewport,
+    )
 
     where = f"{path}: [tool.ramplint.browser]"
     if not isinstance(section, dict):
@@ -121,6 +126,10 @@ def _browser_section(path: Path, section: object) -> dict[str, Any]:
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise ConfigError(f"{where}.{key} must be a whole number above 0")
             result[normalized.replace("-", "_")] = value
+        elif normalized == "screenshot-format":
+            if not isinstance(value, str) or value.lower() not in SCREENSHOT_FORMATS:
+                raise ConfigError(f"{where}.{key} must be one of: {', '.join(SCREENSHOT_FORMATS)}")
+            result["screenshot_format"] = value.lower()
         elif normalized == "crawl":
             if not isinstance(value, bool):
                 raise ConfigError(f"{where}.{key} must be true or false")

@@ -9,6 +9,8 @@ Skipped when Playwright or Chromium is not installed::
 from __future__ import annotations
 
 import socket
+import struct
+import time
 
 import pytest
 
@@ -122,3 +124,63 @@ def test_http_error_page_is_still_checked(session, site_url):
 def test_mobile_viewport(session, site_url):
     snapshot = session.capture(f"{site_url}/basic/index.html", parse_viewport("mobile"))
     assert snapshot.page_size[0] == 390
+
+
+def png_size(data: bytes) -> tuple[int, int]:
+    assert data.startswith(b"\x89PNG")
+    return struct.unpack(">II", data[16:24])
+
+
+def test_lazy_content_is_loaded(session, site_url):
+    snapshot = session.capture(f"{site_url}/basic/lazy.html", DESKTOP)
+    selectors = {e.selector for e in snapshot.elements.values()}
+    assert {"#more-1", "#more-2", "#lazy-img"} <= selectors
+    # Scrolled back up: boxes are page coordinates, the screenshot is the top.
+    assert by_id(snapshot, "more-2").box[1] > 2700
+    assert snapshot.page_size[1] > 4000
+
+
+def test_infinite_scroll_stops(session, site_url, monkeypatch):
+    monkeypatch.setattr(session.options, "timeout", 5)
+    started = time.monotonic()
+    snapshot = session.capture(f"{site_url}/basic/infinite.html", DESKTOP)
+    assert time.monotonic() - started < 7
+    assert snapshot.ok and snapshot.html
+
+
+def test_page_that_never_reaches_network_idle(session, site_url, monkeypatch):
+    monkeypatch.setattr(session.options, "timeout", 3)
+    started = time.monotonic()
+    snapshot = session.capture(f"{site_url}/basic/polling.html", DESKTOP)
+    assert time.monotonic() - started < 4.5
+    assert snapshot.ok and snapshot.title == "Polling"
+
+
+def test_png_screenshots_and_crops(session, site_url, monkeypatch, tmp_path):
+    monkeypatch.setattr(session.options, "screenshot_format", "png")
+    snapshot = session.capture(f"{site_url}/basic/index.html", DESKTOP)
+    assert png_size(snapshot.screenshot) == (1280, 800)
+    assert png_size(snapshot.full_screenshot)[0] == 1280
+
+    # Crops work on a saved snapshot: the page is not opened again.
+    loaded = PageSnapshot.load(snapshot.save(tmp_path / "index"))
+    assert (tmp_path / "index" / "full.png").is_file()
+    button = by_id(loaded, "named-by-js")
+    x, y, w, h = button.box
+    crop = session.crop(loaded, button.box, padding=4)
+    width, height = png_size(crop)
+    assert abs(width - (w + 8)) <= 1 and abs(height - (h + 8)) <= 1
+
+    hidden = by_id(loaded, "hidden-img")
+    assert session.crops(loaded, [hidden.box, button.box])[0] is None
+
+
+def test_jpeg_crop(session, index):
+    crop = session.crop(index, by_id(index, "named-by-js").box)
+    assert crop.startswith(b"\xff\xd8")
+
+
+def test_no_screenshot_no_crop(session):
+    empty = PageSnapshot(url="http://x/", viewport="desktop")
+    assert session.crops(empty, [(0, 0, 10, 10)]) == [None]
+    assert session.crops(empty, []) == []

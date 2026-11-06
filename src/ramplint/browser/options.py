@@ -15,6 +15,9 @@ VIEWPORT_PRESETS: dict[str, tuple[int, int, bool]] = {
     "mobile": (390, 844, True),
 }
 
+#: Image formats for screenshots. JPEG is the default: full-page shots are large.
+SCREENSHOT_FORMATS = ("jpeg", "png")
+
 _SIZE_RE = re.compile(r"^(\d{2,5})x(\d{2,5})$")
 
 
@@ -77,6 +80,8 @@ class BrowserOptions:
     wait_for: str | None = None
     #: Write every page snapshot to this folder (for debugging and test fixtures).
     save_snapshots: str | None = None
+    #: ``jpeg`` (quality 70) or ``png``.
+    screenshot_format: str = "jpeg"
     #: Start page when no URL is given on the command line.
     base_url: str | None = None
     #: Most pages to check in one run.

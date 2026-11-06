@@ -18,6 +18,32 @@ SNAPSHOT_SCHEMA = 1
 #: ``(x, y, width, height)`` in CSS pixels, relative to the top of the page.
 Box = tuple[float, float, float, float]
 
+#: Files of the two screenshots, without the extension.
+_SCREENSHOTS = (("screenshot", "screenshot"), ("full", "full_screenshot"))
+
+
+def image_extension(data: bytes) -> str:
+    """``png`` or ``jpg``, from the first bytes of the image."""
+    return "png" if data.startswith(b"\x89PNG") else "jpg"
+
+
+def padded_box(box: Box, padding: float, size: tuple[int, int]) -> Box | None:
+    """``box`` grown by ``padding`` on every side and clipped to a page of ``size``.
+
+    ``None`` when nothing of the element is on the page (hidden, zero size or
+    outside of it).
+    """
+    x, y, width, height = box
+    if width <= 0 or height <= 0:
+        return None
+    left = max(x - padding, 0.0)
+    top = max(y - padding, 0.0)
+    right = min(x + width + padding, float(size[0]))
+    bottom = min(y + height + padding, float(size[1]))
+    if right <= left or bottom <= top:
+        return None
+    return (left, top, right - left, bottom - top)
+
 
 @dataclass
 class ElementInfo:
@@ -97,10 +123,10 @@ class PageSnapshot:
             json.dumps(self.to_dict(), indent=1), encoding="utf-8"
         )
         (folder / "page.html").write_text(self.html, encoding="utf-8")
-        if self.screenshot is not None:
-            (folder / "screenshot.jpg").write_bytes(self.screenshot)
-        if self.full_screenshot is not None:
-            (folder / "full.jpg").write_bytes(self.full_screenshot)
+        for name, attr in _SCREENSHOTS:
+            image = getattr(self, attr)
+            if image is not None:
+                (folder / f"{name}.{image_extension(image)}").write_bytes(image)
         return folder
 
     @classmethod
@@ -110,10 +136,12 @@ class PageSnapshot:
         html_file = folder / "page.html"
         html = html_file.read_text(encoding="utf-8") if html_file.is_file() else ""
         snapshot = cls.from_dict(data, html=html)
-        for name, attr in (("screenshot.jpg", "screenshot"), ("full.jpg", "full_screenshot")):
-            image = folder / name
-            if image.is_file():
-                setattr(snapshot, attr, image.read_bytes())
+        for name, attr in _SCREENSHOTS:
+            for extension in ("jpg", "png"):
+                image = folder / f"{name}.{extension}"
+                if image.is_file():
+                    setattr(snapshot, attr, image.read_bytes())
+                    break
         return snapshot
 
     def folder_name(self) -> str:
