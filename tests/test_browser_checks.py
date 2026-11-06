@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-from ramplint.browser.checks import browser_rules, check_snapshot, merge_viewports
+from ramplint.browser.checks import browser_rules, check_snapshot, merge_findings
 from ramplint.browser.snapshot import ElementInfo, PageSnapshot
 from ramplint.linter import Violation
 from ramplint.rules import select_rules
@@ -139,7 +139,7 @@ def test_same_element_in_several_viewports_is_one_problem():
     found = check_snapshot(snapshot(PAGE, "desktop"), rules) + check_snapshot(
         snapshot(PAGE, "mobile"), rules
     )
-    merged = merge_viewports(found)
+    merged = merge_findings(found)
     assert [(v.code, v.viewport) for v in merged] == [
         ("RL101", "desktop,mobile"),
         ("RL501", "desktop,mobile"),
@@ -149,8 +149,75 @@ def test_same_element_in_several_viewports_is_one_problem():
 def test_problem_in_one_viewport_only():
     desktop = check_snapshot(snapshot(PAGE, "desktop", logo={"visible": False}), select_rules())
     mobile = check_snapshot(snapshot(PAGE, "mobile"), select_rules())
-    merged = merge_viewports(desktop + mobile)
+    merged = merge_findings(desktop + mobile)
     assert ("RL101", "mobile") in [(v.code, v.viewport) for v in merged]
+
+
+def test_same_problem_on_pages_of_one_pattern_is_one_problem():
+    rules = select_rules()
+    found = []
+    for n, viewport in ((2, "desktop"), (1, "desktop"), (1, "mobile"), (3, "mobile")):
+        page = snapshot(PAGE, viewport)
+        page.url = f"http://localhost:8000/products/{n}/"
+        found += check_snapshot(page, rules)
+    merged = merge_findings(found)
+    assert len(merged) == 2
+    image = merged[0]
+    assert image.code == "RL101" and image.selector == "#logo"
+    assert image.path == image.url == "http://localhost:8000/products/1/"
+    assert image.pages == (
+        "http://localhost:8000/products/1/",
+        "http://localhost:8000/products/2/",
+        "http://localhost:8000/products/3/",
+    )
+    assert image.locations == image.pages
+    assert image.viewport == "desktop,mobile"
+
+
+def test_pages_of_different_patterns_stay_apart():
+    rules = select_rules(["RL101"])
+    found = []
+    for url in ("http://localhost:8000/", "http://localhost:8000/about/"):
+        page = snapshot(PAGE)
+        page.url = url
+        found += check_snapshot(page, rules)
+    merged = merge_findings(found)
+    assert [(v.path, v.pages) for v in merged] == [
+        ("http://localhost:8000/", ("http://localhost:8000/",)),
+        ("http://localhost:8000/about/", ("http://localhost:8000/about/",)),
+    ]
+
+
+def test_different_elements_on_the_same_pattern_stay_apart():
+    one = snapshot(PAGE)
+    one.url = "http://localhost:8000/products/1/"
+    two = snapshot(PAGE.replace('id="logo"', 'id="hero"'))
+    two.url = "http://localhost:8000/products/2/"
+    rules = select_rules(["RL101"])
+    merged = merge_findings(check_snapshot(one, rules) + check_snapshot(two, rules))
+    assert [v.selector for v in merged] == ["#logo", "#hero"]
+
+
+def test_new_violation_fields():
+    v = Violation(
+        "http://x/1/",
+        1,
+        1,
+        "RL101",
+        "img-alt",
+        "msg",
+        url="http://x/1/",
+        screenshot="shots/1.jpg",
+        template="catalog/product.html:12",
+        pages=("http://x/1/", "http://x/2/"),
+    )
+    assert v == Violation("http://x/1/", 1, 1, "RL101", "img-alt", "msg")
+    data = v.to_dict()
+    assert data["pages"] == ["http://x/1/", "http://x/2/"]
+    assert data["screenshot"] == "shots/1.jpg"
+    assert data["template"] == "catalog/product.html:12"
+    assert "bbox" not in data and "selector" not in data
+    assert Violation("a.html", 1, 1, "RL101", "img-alt", "m").locations == ("a.html",)
 
 
 def test_template_violations_are_unchanged():

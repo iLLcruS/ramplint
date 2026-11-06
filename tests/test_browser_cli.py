@@ -318,3 +318,15 @@ def test_help_has_a_browser_group(capsys):
         "--no-crawl",
     ):
         assert flag in browser
+
+
+def test_same_problem_on_product_pages_is_reported_once(fake_browser, capsys):
+    urls = [f"http://localhost:8000/products/{n}/" for n in (1, 2, 3)]
+    for url in urls:
+        fake_browser.PAGES[url] = lambda u, v: page(u, v, BAD)
+    assert main([*urls, "http://localhost:8000/"]) == EXIT_VIOLATIONS
+    out = capsys.readouterr().out
+    assert out.count("RL101") == 1
+    assert "http://localhost:8000/products/1/ body > main > img: RL101" in out
+    assert "(and 2 more pages)" in out
+    assert "Found 1 problem in 3 of 4 pages." in out

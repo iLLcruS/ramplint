@@ -281,6 +281,9 @@ http://localhost:8000/ #logo @mobile: RL101 <img> is missing an alt attribute (u
   skipped, and when Chromium computes an accessible name (for example one set
   by JavaScript), ramplint trusts it.
 - `<!-- ramplint: ignore ... -->` comments work in rendered pages too.
+- The same problem on pages that differ only in an id (`/products/1/`,
+  `/products/2/`) comes from the same template, so it is reported once, on the
+  first page, with `(and 2 more pages)`. JSON and SARIF list every page.
 - Pages that fail to load, return an error status or are not HTML are reported
   on stderr; ramplint exits with 2 when no page could be checked.
 

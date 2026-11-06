@@ -356,6 +356,52 @@ def test_html_report():
     assert "desktop, mobile" in html
 
 
+MERGED = Violation(
+    "http://x/products/1/",
+    3,
+    1,
+    "RL101",
+    "img-alt",
+    "<img> is missing an alt",
+    url="http://x/products/1/",
+    selector="#logo",
+    viewport="desktop",
+    template="catalog/product.html:4",
+    pages=("http://x/products/1/", "http://x/products/2/", "http://x/products/3/"),
+)
+ONE_PAGE = Violation(
+    "http://x/", 1, 1, "RL601", "html-lang", "no lang", url="http://x/", pages=("http://x/",)
+)
+
+
+def render_merged(fmt: str) -> str:
+    out = io.StringIO()
+    with browser_report(["desktop"]):
+        REPORTERS[fmt].write([MERGED, ONE_PAGE], 5, out, False)
+    return out.getvalue()
+
+
+def test_problem_on_several_pages():
+    text = render_merged("text")
+    assert (
+        "http://x/products/1/ #logo: RL101 <img> is missing an alt [img-alt] (and 2 more pages)"
+        in text
+    )
+    assert "[html-lang]\n" in text  # nothing added for one page
+    assert "Found 2 problems in 4 of 5 pages." in text
+    github = render_merged("github")
+    assert "is missing an alt (and 2 more pages)" in github
+    data = json.loads(render_merged("json"))
+    assert data["violations"][0]["pages"][2] == "http://x/products/3/"
+    properties = json.loads(render_merged("sarif"))["runs"][0]["results"][0]["properties"]
+    assert len(properties["pages"]) == 3 and properties["template"] == "catalog/product.html:4"
+    html = render_merged("html")
+    assert 'Also on: <a href="http://x/products/2/">http://x/products/2/</a>, ' in html
+    assert "<dt>Pages with problems</dt><dd>4</dd>" in html
+    assert "2 accessibility problems in 4 pages" in html
+    assert summary_line([MERGED], 3) == "Found 1 problem in 3 of 3 files."
+
+
 def test_html_report_passes_ramplint(tmp_path):
     from ramplint import lint_file
 

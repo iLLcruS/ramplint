@@ -18,7 +18,7 @@ from typing import TextIO
 
 from ramplint import __version__
 from ramplint.linter import Violation
-from ramplint.reporters import report_context, reporter
+from ramplint.reporters import affected_count, report_context, reporter
 from ramplint.rules import REGISTRY
 
 _CSS = files("ramplint").joinpath("report.css").read_text(encoding="utf-8")
@@ -32,7 +32,7 @@ def _headline(violations: Sequence[Violation], files_checked: int) -> str:
     noun = report_context().noun
     if not violations:
         return f"No accessibility problems in {_plural(files_checked, noun)}"
-    affected = len({v.path for v in violations})
+    affected = affected_count(violations)
     return f"{_plural(len(violations), 'accessibility problem')} in {_plural(affected, noun)}"
 
 
@@ -94,10 +94,13 @@ def _location_cell(v: Violation) -> str:
 
 
 def _element(v: Violation) -> str:
-    """CSS selector of the element a browser finding is about."""
-    if not v.selector:
-        return ""
-    return f'<code class="selector">{escape(v.selector)}</code>'
+    """CSS selector of the element a browser finding is about, and other pages."""
+    html = f'<code class="selector">{escape(v.selector)}</code>' if v.selector else ""
+    others = v.locations[1:]
+    if others:
+        links = ", ".join(f'<a href="{escape(url)}">{escape(url)}</a>' for url in others)
+        html += f'<p class="pages">Also on: {links}</p>'
+    return html
 
 
 def _filters(violations: Sequence[Violation]) -> str:
@@ -195,7 +198,7 @@ def report_html(
     headline = _headline(violations, files_checked)
     noun = report_context().noun
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    affected = len({v.path for v in violations})
+    affected = affected_count(violations)
 
     if violations:
         file_links, file_sections = _file_sections(violations)

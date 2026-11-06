@@ -24,7 +24,7 @@ DEFAULT_EXCLUDE_DIRS = frozenset(
 
 
 #: Fields only set for problems found in a rendered page (browser mode).
-BROWSER_FIELDS = ("url", "selector", "viewport", "bbox")
+BROWSER_FIELDS = ("url", "selector", "viewport", "bbox", "screenshot", "template", "pages")
 
 
 @dataclass(frozen=True, order=True)
@@ -45,18 +45,30 @@ class Violation:
     viewport: str | None = field(default=None, compare=False)
     #: ``(x, y, width, height)`` of the element in CSS pixels.
     bbox: tuple[float, float, float, float] | None = field(default=None, compare=False)
+    #: Picture of the element, relative to the report folder (set by the report).
+    screenshot: str | None = field(default=None, compare=False)
+    #: ``template.html:line`` that produced the element (set by the source map).
+    template: str | None = field(default=None, compare=False)
+    #: Every URL where the same problem was seen; ``path`` is the first of them.
+    pages: tuple[str, ...] | None = field(default=None, compare=False)
 
     @property
     def in_browser(self) -> bool:
         return self.url is not None
+
+    @property
+    def locations(self) -> tuple[str, ...]:
+        """The files or pages this problem is in."""
+        return self.pages or (self.path,)
 
     def to_dict(self) -> dict[str, object]:
         data = asdict(self)
         for key in BROWSER_FIELDS:
             if data[key] is None:
                 del data[key]
-        if "bbox" in data:
-            data["bbox"] = list(data["bbox"])
+        for key in ("bbox", "pages"):
+            if key in data:
+                data[key] = list(data[key])
         return data
 
 
