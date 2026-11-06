@@ -24,3 +24,6 @@ htmlcov/
 .idea/
 .vscode/
 .DS_Store
+
+# Local maintainer scripts (GitHub issues etc.)
+scripts/create_issues_*.py
