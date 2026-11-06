@@ -56,6 +56,10 @@ def _browser_properties(v: Violation) -> dict[str, object]:
         properties["selector"] = v.selector
     if v.viewport:
         properties["viewports"] = v.viewport.split(",")
+    if len(v.locations) > 1:
+        properties["pages"] = list(v.locations)
+    if v.template:
+        properties["template"] = v.template
     return properties
 
 

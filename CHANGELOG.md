@@ -30,8 +30,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
   - `BrowserSession.crops()` cuts element pictures with a few pixels of
     padding out of the full-page screenshot, also from saved snapshots.
   - Text, JSON, GitHub, SARIF and HTML reports show browser findings.
-- `Violation` has optional `url`, `selector`, `viewport` and `bbox` fields
-  (`None` for templates; template results and JSON output are unchanged).
+  - The same problem (rule, element and message) on pages of one URL pattern
+    (`/products/1/`, `/products/2/`; numbers, UUIDs, dates and hashes in the
+    path, query values) is reported once and lists every page.
+- `Violation` has optional `url`, `selector`, `viewport`, `bbox`,
+  `screenshot`, `template` and `pages` fields (`None` for templates; template
+  results and JSON output are unchanged) and a `locations` property.
 
 ## [0.6.0] - 2026-10-21
 

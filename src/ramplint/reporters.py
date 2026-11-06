@@ -92,6 +92,19 @@ def browser_location(v: Violation) -> str:
     return location
 
 
+def other_pages(v: Violation) -> str:
+    """`` (and 2 more pages)`` for a problem seen on several pages, else ``""``."""
+    more = len(v.locations) - 1
+    if more < 1:
+        return ""
+    return f" (and {more} more {'page' if more == 1 else 'pages'})"
+
+
+def affected_count(violations: Sequence[Violation]) -> int:
+    """How many files or pages have at least one problem."""
+    return len({location for v in violations for location in v.locations})
+
+
 def available_formats() -> list[str]:
     return sorted(REPORTERS)
 
@@ -101,7 +114,7 @@ def summary_line(violations: Sequence[Violation], files_checked: int) -> str:
     files_word = unit if files_checked == 1 else f"{unit}s"
     if not violations:
         return f"All checks passed ({files_checked} {files_word})."
-    affected = len({v.path for v in violations})
+    affected = affected_count(violations)
     problems = "problem" if len(violations) == 1 else "problems"
     return f"Found {len(violations)} {problems} in {affected} of {files_checked} {files_word}."
 
@@ -178,7 +191,7 @@ def report_text(
         location = _paint(f"{where}:", _BOLD, color=color)
         code = _paint(v.code, _RED, _BOLD, color=color)
         name = _paint(f"[{v.name}]", _DIM, color=color)
-        out.write(f"{location} {code} {v.message} {name}\n")
+        out.write(f"{location} {code} {v.message} {name}{other_pages(v)}\n")
 
     summary = summary_line(violations, files_checked)
     if violations:
@@ -217,7 +230,7 @@ def report_github(
         title = _escape_github(f"{v.code} {v.name}", property_value=True)
         if v.in_browser:
             # No file to attach the annotation to; it shows in the run summary.
-            message = _escape_github(f"{browser_location(v)}: {v.message}")
+            message = _escape_github(f"{browser_location(v)}: {v.message}{other_pages(v)}")
             out.write(f"::error title={title}::{message}\n")
             continue
         file = _escape_github(v.path, property_value=True)

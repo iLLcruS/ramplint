@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ramplint.browser.checks import check_snapshot, merge_viewports
+from ramplint.browser.checks import check_snapshot, merge_findings
 from ramplint.browser.options import BrowserOptions
 from ramplint.browser.session import BrowserSession
 from ramplint.browser.snapshot import PageSnapshot
@@ -75,4 +75,4 @@ class ResultBuilder:
         self.violations.extend(violations)
 
     def build(self) -> ScanResult:
-        return ScanResult(snapshots=self.snapshots, violations=merge_viewports(self.violations))
+        return ScanResult(snapshots=self.snapshots, violations=merge_findings(self.violations))

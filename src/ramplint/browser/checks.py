@@ -13,9 +13,11 @@ better than the markup are used to avoid false positives:
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import replace
 
 from ramplint import dom
 from ramplint.browser.snapshot import PageSnapshot
+from ramplint.browser.urls import url_pattern
 from ramplint.linter import Violation
 from ramplint.rules import Rule
 from ramplint.template import prepare
@@ -79,32 +81,25 @@ def check_snapshot(snapshot: PageSnapshot, rules: Iterable[Rule]) -> list[Violat
     return sorted(found.values())
 
 
-def merge_viewports(violations: Iterable[Violation]) -> list[Violation]:
-    """One problem per URL, rule, element and message, listing every viewport."""
-    merged: dict[tuple[str, str, str | None, str], Violation] = {}
-    viewports: dict[tuple[str, str, str | None, str], list[str]] = {}
+def merge_findings(violations: Iterable[Violation]) -> list[Violation]:
+    """One problem per rule, element and message on pages of the same URL pattern.
+
+    ``/products/1/`` and ``/products/2/`` come from the same template, so the
+    same problem on both is reported once; it lists every page in ``pages``
+    and every viewport in ``viewport``. ``path`` and ``url`` are the first page.
+    """
+    groups: dict[tuple[str, str, str | None, str], list[Violation]] = {}
     for v in violations:
-        key = (v.path, v.code, v.selector, v.message)
-        if key not in merged:
-            merged[key] = v
-            viewports[key] = []
-        if v.viewport and v.viewport not in viewports[key]:
-            viewports[key].append(v.viewport)
+        key = (url_pattern(v.url or v.path), v.code, v.selector, v.message)
+        groups.setdefault(key, []).append(v)
     result = []
-    for key, v in merged.items():
-        names = ",".join(viewports[key]) or None
-        result.append(
-            Violation(
-                path=v.path,
-                line=v.line,
-                col=v.col,
-                code=v.code,
-                name=v.name,
-                message=v.message,
-                url=v.url,
-                selector=v.selector,
-                viewport=names,
-                bbox=v.bbox,
-            )
-        )
+    for items in groups.values():
+        pages = tuple(sorted({v.path for v in items}))
+        first = min((v for v in items if v.path == pages[0]), key=lambda v: (v.line, v.col))
+        viewports: list[str] = []
+        for v in items:
+            for name in (v.viewport or "").split(","):
+                if name and name not in viewports:
+                    viewports.append(name)
+        result.append(replace(first, viewport=",".join(viewports) or None, pages=pages))
     return sorted(result, key=lambda v: (v.path, v.line, v.col, v.code, v.selector or ""))
