@@ -16,7 +16,7 @@ from ramplint.browser.options import (
     parse_viewport,
     url_matches,
 )
-from ramplint.browser.snapshot import ElementInfo, PageSnapshot
+from ramplint.browser.snapshot import ElementInfo, PageSnapshot, image_extension, padded_box
 from ramplint.config import ConfigError, load_config
 from ramplint.linter import Violation
 from ramplint.reporters import REPORTERS, browser_report, report_context, summary_line
@@ -120,6 +120,7 @@ def test_browser_config(tmp_path):
         ('exclude = [""]', "list of URL patterns"),
         ("deny = [1]", "list of URL patterns"),
         ("follow = true", "unknown option follow"),
+        ('screenshot-format = "gif"', "one of: jpeg, png"),
     ],
 )
 def test_invalid_browser_config(tmp_path, body, message):
@@ -143,6 +144,8 @@ def test_browser_crawl_config(tmp_path):
         "exclude": ["/admin/*"],
         "deny": [*DEFAULT_DENY, "*/reset/*"],
     }
+    png = load_config(write_config(tmp_path, 'screenshot-format = "PNG"')).browser
+    assert png == {"screenshot_format": "png"}
     options = BrowserOptions(**browser)
     assert options.denied("http://x/accounts/logout/") and options.denied("http://x/reset/1/")
 
@@ -192,6 +195,39 @@ def test_snapshot_without_screenshots(tmp_path):
     (tmp_path / "s" / "page.html").unlink()
     loaded = PageSnapshot.load(tmp_path / "s")
     assert loaded.screenshot is None and loaded.html == ""
+
+
+def test_png_snapshot_save_and_load(tmp_path):
+    original = make_snapshot()
+    original.screenshot = b"\x89PNGviewport"
+    original.full_screenshot = b"\x89PNGfull"
+    folder = original.save(tmp_path / "png")
+    assert sorted(p.name for p in folder.iterdir()) == [
+        "full.png",
+        "page.html",
+        "screenshot.png",
+        "snapshot.json",
+    ]
+    assert PageSnapshot.load(folder) == original
+
+
+def test_image_extension():
+    assert image_extension(b"\x89PNG\r\n") == "png"
+    assert image_extension(b"\xff\xd8\xff") == "jpg"
+
+
+@pytest.mark.parametrize(
+    "box, expected",
+    [
+        ((10, 20, 30, 40), (2, 12, 46, 56)),
+        ((2, 3, 10, 10), (0, 0, 20, 21)),  # clipped at the top left
+        ((90, 90, 20, 20), (82, 82, 18, 18)),  # clipped at the bottom right
+        ((10, 10, 0, 5), None),  # no size
+        ((200, 200, 10, 10), None),  # outside the page
+    ],
+)
+def test_padded_box(box, expected):
+    assert padded_box(box, 8, (100, 100)) == expected
 
 
 def test_snapshot_schema_is_checked():

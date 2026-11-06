@@ -95,6 +95,14 @@ def test_options_reach_the_session(fake_browser, tmp_path):
     assert (snapshots / "localhost_8000@desktop" / "snapshot.json").is_file()
 
 
+def test_screenshot_format(fake_browser, tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[tool.ramplint.browser]\nscreenshot-format = "png"\n')
+    assert main(["http://localhost:8000/"]) == EXIT_OK
+    assert fake_browser.options.screenshot_format == "png"
+    assert main(["http://localhost:8000/", "--screenshot-format", "jpeg"]) == EXIT_OK
+    assert fake_browser.options.screenshot_format == "jpeg"
+
+
 def test_command_line_overrides_config(fake_browser):
     args = ["http://localhost:8000/", "--delay", "0", "--wait-for", "main", "--viewport", "mobile"]
     assert main(args) == EXIT_OK
@@ -302,6 +310,7 @@ def test_help_has_a_browser_group(capsys):
         "--wait-for",
         "--headed",
         "--save-snapshots",
+        "--screenshot-format",
         "--max-pages",
         "--per-pattern",
         "--include",

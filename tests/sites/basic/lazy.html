@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Lazy</title>
+<style>section { height: 900px; }</style></head>
+<body><main>
+<h1>Long page</h1>
+<section>One</section><section>Two</section><section>Three</section>
+<div id="sentinel"></div>
+</main>
+<script>
+// Loads more content when the bottom of the page comes into view, twice.
+let loads = 0;
+new IntersectionObserver((entries) => {
+  if (!entries[0].isIntersecting || loads >= 2) return;
+  loads += 1;
+  const html = `<section id="more-${loads}">More ${loads}</section>`;
+  document.getElementById("sentinel").insertAdjacentHTML("beforebegin", html);
+  if (loads === 2) {
+    document.getElementById("sentinel").insertAdjacentHTML("beforebegin", '<img id="lazy-img" src="x.png">');
+  }
+}).observe(document.getElementById("sentinel"));
+</script>
+</body>
+</html>

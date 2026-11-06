@@ -286,8 +286,13 @@ http://localhost:8000/ #logo @mobile: RL101 <img> is missing an alt attribute (u
 
 Options: `--viewport` (`desktop`, `tablet`, `mobile` or `WIDTHxHEIGHT`),
 `--timeout SECONDS`, `--delay MS`, `--wait-for SELECTOR` (for pages that render
-late), `--headed` and `--save-snapshots DIR` (rendered HTML, element data and
-screenshots of every page).
+late), `--headed`, `--save-snapshots DIR` (rendered HTML, element data and
+screenshots of every page) and `--screenshot-format png` (default: JPEG).
+
+Before checking a page, ramplint waits for it to load and for the network to
+go quiet (pages that poll never do; the wait is bounded by `--timeout`), then
+scrolls down so lazy-loaded content and infinite scroll show up (at most 20
+screens) and scrolls back to the top.
 
 Which pages: `--max-pages N` (default 50), `--include GLOB` and
 `--exclude-url GLOB` (both repeatable). A pattern is matched against the path
@@ -306,6 +311,7 @@ viewports = ["desktop", "mobile"]
 timeout = 30
 delay = 0
 wait-for = "#app"
+screenshot-format = "jpeg"
 max-pages = 50
 per-pattern = 2
 crawl = true

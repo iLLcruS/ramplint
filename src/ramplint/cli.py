@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from ramplint import __version__
-from ramplint.browser.options import BrowserOptions, is_url
+from ramplint.browser.options import SCREENSHOT_FORMATS, BrowserOptions, is_url
 from ramplint.config import ConfigError, load_config
 from ramplint.linter import DEFAULT_EXCLUDE_DIRS, DEFAULT_EXTENSIONS, Violation, lint_file
 from ramplint.project.discovery import SettingsNotFound
@@ -158,6 +158,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="save the rendered HTML, element data and screenshots of every page to DIR",
     )
     browser.add_argument(
+        "--screenshot-format",
+        choices=SCREENSHOT_FORMATS,
+        help="image format of screenshots (default: jpeg)",
+    )
+    browser.add_argument(
         "--max-pages", type=int, metavar="N", help="check at most N pages (default: 50)"
     )
     browser.add_argument(
@@ -196,6 +201,7 @@ _BROWSER_OPTIONS = (
     "wait_for",
     "headed",
     "save_snapshots",
+    "screenshot_format",
     "max_pages",
     "per_pattern",
     "include",
@@ -413,6 +419,8 @@ def _browser_options(args: argparse.Namespace, config_values: dict) -> BrowserOp
         options.headed = True
     if args.save_snapshots is not None:
         options.save_snapshots = str(args.save_snapshots)
+    if args.screenshot_format:
+        options.screenshot_format = args.screenshot_format
     for name in ("max_pages", "per_pattern"):
         value = getattr(args, name)
         if value is not None:
