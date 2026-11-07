@@ -1,4 +1,9 @@
-"""The only module that talks to the browser (Playwright + Chromium)."""
+"""Chromium through Playwright: open pages and capture snapshots of them.
+
+Together with :mod:`ramplint.browser.probes` (which run on a loaded page) this
+is the only code that talks to the browser; everything else works on
+:class:`~ramplint.browser.snapshot.PageSnapshot` objects.
+"""
 
 from __future__ import annotations
 
@@ -6,12 +11,22 @@ import base64
 import contextlib
 import json
 import time
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from importlib.resources import files
 from types import TracebackType
 from typing import Any
 
 from ramplint.browser.options import BrowserOptions, Viewport
-from ramplint.browser.snapshot import Box, ElementInfo, PageSnapshot, image_extension, padded_box
+from ramplint.browser.snapshot import (
+    Box,
+    ElementInfo,
+    NetworkRecord,
+    PageSnapshot,
+    TextSample,
+    image_extension,
+    padded_box,
+)
 
 INSTALL_HINT = 'pip install "ramplint[browser]" && playwright install chromium'
 
@@ -27,6 +42,60 @@ SCROLL_PAUSE_MS = 150
 SETTLE_TIMEOUT = 2.0
 #: Pixels of context around an element crop.
 CROP_PADDING = 8
+
+
+#: Largest body :meth:`BrowserSession.fetch` reads (sitemaps can be big).
+MAX_FETCH_BYTES = 10 * 1024 * 1024
+#: Requests a page makes that are recorded for the API inventory.
+NETWORK_KINDS = frozenset({"xhr", "fetch"})
+
+#: Runs on a loaded page after the snapshot: ``(session, page, snapshot, deadline)``.
+Probe = Callable[["BrowserSession", Any, PageSnapshot, float], None]
+
+
+@dataclass(frozen=True)
+class Fetched:
+    url: str
+    status: int
+    content_type: str
+    text: str
+
+    @property
+    def ok(self) -> bool:
+        return 200 <= self.status < 300
+
+
+def _record_response(snapshot: PageSnapshot, response: Any) -> None:
+    request = response.request
+    if request.resource_type not in NETWORK_KINDS:
+        return
+    length = response.headers.get("content-length")
+    snapshot.requests.append(
+        NetworkRecord(
+            method=request.method,
+            url=request.url,
+            status=response.status,
+            content_type=response.headers.get("content-type", ""),
+            size=int(length) if length and length.isdigit() else None,
+            kind=request.resource_type,
+        )
+    )
+
+
+def _record_failure(snapshot: PageSnapshot, request: Any) -> None:
+    if request.resource_type in NETWORK_KINDS:
+        snapshot.requests.append(
+            NetworkRecord(method=request.method, url=request.url, kind=request.resource_type)
+        )
+
+
+def _redirect_chain(request: Any) -> list[str]:
+    chain = []
+    previous = request.redirected_from
+    while previous is not None:
+        chain.append(previous.url)
+        previous = previous.redirected_from
+    return chain[::-1]
 
 
 class BrowserUnavailable(Exception):
@@ -98,24 +167,32 @@ class BrowserSession:
             self._playwright.stop()
             self._playwright = None
 
+    def new_context(self, viewport: Viewport) -> Any:
+        """A browser context for ``viewport``, logged in when the options say so."""
+        storage = self.options.storage_state
+        return self._browser.new_context(
+            viewport={"width": viewport.width, "height": viewport.height},
+            is_mobile=viewport.mobile,
+            has_touch=viewport.mobile,
+            device_scale_factor=1,
+            reduced_motion="reduce",
+            ignore_https_errors=True,
+            storage_state=storage if storage else None,
+        )
+
     def _context(self, viewport: Viewport) -> Any:
         if viewport not in self._contexts:
-            self._contexts[viewport] = self._browser.new_context(
-                viewport={"width": viewport.width, "height": viewport.height},
-                is_mobile=viewport.mobile,
-                has_touch=viewport.mobile,
-                device_scale_factor=1,
-                reduced_motion="reduce",
-                ignore_https_errors=True,
-            )
+            self._contexts[viewport] = self.new_context(viewport)
         return self._contexts[viewport]
 
     # -- capturing -----------------------------------------------------------
-    def capture(self, url: str, viewport: Viewport) -> PageSnapshot:
+    def capture(self, url: str, viewport: Viewport, probes: Sequence[Probe] = ()) -> PageSnapshot:
         """Open ``url`` and capture everything checks and reports need.
 
-        Never raises for problems with the page itself (network errors,
-        timeouts): they end up in :attr:`PageSnapshot.error`.
+        ``probes`` run on the loaded page after the snapshot is taken (focus
+        order, menus and dialogs, reflow) and add to it. Never raises for
+        problems with the page itself (network errors, timeouts): they end up
+        in :attr:`PageSnapshot.error`.
         """
         from playwright.sync_api import Error as PlaywrightError
         from playwright.sync_api import TimeoutError as PlaywrightTimeout
@@ -131,6 +208,8 @@ class BrowserSession:
             ),
         )
         page.on("pageerror", lambda error: snapshot.console_errors.append(str(error)))
+        page.on("response", lambda response: _record_response(snapshot, response))
+        page.on("requestfailed", lambda request: _record_failure(snapshot, request))
 
         def remaining_ms(cap: float | None = None) -> float:
             left = max(deadline - time.monotonic(), 0.1)
@@ -150,6 +229,7 @@ class BrowserSession:
             if response is not None:
                 snapshot.status = response.status
                 snapshot.content_type = response.headers.get("content-type", "")
+                snapshot.redirects = _redirect_chain(response.request)
             if not snapshot.is_html:
                 return snapshot
 
@@ -167,10 +247,39 @@ class BrowserSession:
             if self._scroll_through(page, deadline):
                 with contextlib.suppress(PlaywrightTimeout):
                     page.wait_for_load_state("networkidle", timeout=remaining_ms(SETTLE_TIMEOUT))
-            self._collect(page, snapshot)
+            self.collect(page, snapshot)
+            # Probes get their own time budget: they click, press keys and reload.
+            probe_deadline = time.monotonic() + timeout
+            for probe in probes:
+                if time.monotonic() >= probe_deadline:
+                    break
+                with contextlib.suppress(PlaywrightError):
+                    probe(self, page, snapshot, probe_deadline)
         finally:
             page.close()
         return snapshot
+
+    def fetch(self, url: str) -> Fetched | None:
+        """GET ``url`` without rendering it (``robots.txt``, sitemaps, HTML fragments).
+
+        Uses the cookies of the scan. ``None`` when the request fails.
+        """
+        from playwright.sync_api import Error as PlaywrightError
+
+        context = self._context(self.options.viewports[0])
+        try:
+            response = context.request.get(
+                url, timeout=1000 * self.options.timeout, max_redirects=5, fail_on_status_code=False
+            )
+            body = response.body()[:MAX_FETCH_BYTES]
+        except PlaywrightError:
+            return None
+        return Fetched(
+            url=response.url,
+            status=response.status,
+            content_type=response.headers.get("content-type", ""),
+            text=body.decode("utf-8", errors="replace"),
+        )
 
     @staticmethod
     def _scroll_through(page: Any, deadline: float) -> bool:
@@ -203,10 +312,14 @@ class BrowserSession:
         quality = {"quality": JPEG_QUALITY} if fmt == "jpeg" else {}
         return page.screenshot(type=fmt, full_page=full_page, **quality, **kwargs)
 
-    def _collect(self, page: Any, snapshot: PageSnapshot) -> None:
+    def collect(self, page: Any, snapshot: PageSnapshot, full_page: bool = True) -> None:
+        """Number the elements and record them, the HTML, AX tree and screenshots."""
         data = json.loads(page.evaluate(COLLECT_JS))
         snapshot.title = data["title"]
         snapshot.page_size = (int(data["page"][0]), int(data["page"][1]))
+        snapshot.texts = [
+            TextSample(**{**raw, "backgrounds": tuple(raw["backgrounds"])}) for raw in data["texts"]
+        ]
         for raw in data["elements"]:
             snapshot.elements[raw["id"]] = ElementInfo(
                 id=raw["id"],
@@ -215,11 +328,13 @@ class BrowserSession:
                 box=tuple(round(v, 1) for v in raw["box"]),  # type: ignore[arg-type]
                 visible=bool(raw["visible"]),
                 styles=raw["styles"],
+                source=raw.get("source"),
             )
         self._accessibility_tree(page, snapshot)
         snapshot.html = page.content()
         snapshot.screenshot = self._screenshot(page)
-        snapshot.full_screenshot = self._screenshot(page, full_page=True)
+        if full_page:
+            snapshot.full_screenshot = self._screenshot(page, full_page=True)
 
     @staticmethod
     def _accessibility_tree(page: Any, snapshot: PageSnapshot) -> None:

@@ -21,6 +21,8 @@ from ramplint.rules import (  # noqa: F401
     landmarks,
     lists,
     media,
+    rendered,
+    site,
     tables,
 )
 from ramplint.rules.base import REGISTRY, Rule

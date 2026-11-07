@@ -41,6 +41,19 @@ def _location(v: Violation) -> dict[str, object]:
                 "region": {"startLine": v.line, "startColumn": v.col},
             }
         }
+    template = v.template_location
+    if template is not None:
+        # The template that produced the element; the page is a logical location.
+        path, line, col = template
+        return {
+            "physicalLocation": {
+                "artifactLocation": {"uri": _artifact_uri(path)},
+                "region": {"startLine": line, "startColumn": col},
+            },
+            "logicalLocations": [
+                {"fullyQualifiedName": f"{v.url} {v.selector or ''}".strip(), "kind": "element"}
+            ],
+        }
     # A page of a running site: the URL is the artifact, the element a logical location.
     location: dict[str, object] = {
         "physicalLocation": {"artifactLocation": {"uri": v.path}},
@@ -60,6 +73,12 @@ def _browser_properties(v: Violation) -> dict[str, object]:
         properties["pages"] = list(v.locations)
     if v.template:
         properties["template"] = v.template
+    if v.state:
+        properties["state"] = v.state
+    if v.role:
+        properties["role"] = v.role
+    if v.confirmed:
+        properties["confirmedInBrowser"] = True
     return properties
 
 

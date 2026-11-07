@@ -170,3 +170,57 @@ a.rule-name:hover { text-decoration-color: currentColor; }
   outline-offset: 2px;
 }
 .filter-status { margin: 10px 0 0; color: var(--muted); min-height: 1.5em; }
+
+/* Browser report folder */
+.folder-nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0 0 20px; padding: 0; }
+.folder-nav a { color: var(--sign-ink); text-underline-offset: 4px; }
+.folder-nav a[aria-current="page"] { font-weight: 700; text-decoration-thickness: 3px; }
+.folder-nav a:focus-visible { outline-color: var(--sign-ink); }
+.crop { display: block; max-width: 100%; max-height: 160px; margin-top: 8px; border: 1px solid var(--line); border-radius: 4px; }
+.shot { position: relative; margin: 0 0 24px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel); }
+.shot img { display: block; width: 100%; height: auto; }
+.marker {
+  position: absolute;
+  border: 3px solid var(--issue);
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px var(--panel);
+  min-width: 14px;
+  min-height: 14px;
+}
+.marker b {
+  position: absolute;
+  top: -14px;
+  left: -14px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  border-radius: 12px;
+  background: var(--issue);
+  color: var(--panel);
+  font: 700 0.8rem/24px var(--sans);
+  text-align: center;
+}
+.marker:target { outline: 4px solid var(--focus); outline-offset: 2px; }
+.page-problems { margin: 0; padding-left: 1.6em; }
+.page-problems li { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.page-problems li:last-child { border-bottom: 0; }
+.status { font-weight: 600; white-space: nowrap; }
+.status-scanned { color: inherit; }
+.status-error, .status-needs-login, .status-needs-sample { color: var(--issue); }
+.tree, .tree ul { list-style: none; margin: 0; padding-left: 1.2em; }
+.tree { padding-left: 0; }
+.tree li { padding: 3px 0; }
+.tree code { font-family: var(--mono); font-size: 0.9rem; overflow-wrap: anywhere; }
+.new {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--panel);
+  background: var(--issue);
+  border-radius: 3px;
+  padding: 0 6px;
+}
+.fixed { margin-top: 28px; }

@@ -44,6 +44,12 @@ def test_page_exists_and_matches_rule(rule):
 @pytest.mark.parametrize("rule", RULES, ids=IDS)
 def test_problem_examples_are_reported(rule):
     page = (DOCS / f"{rule.code}.md").read_text(encoding="utf-8")
+    if rule.browser_only:
+        # Rendered-page rules need a browser; their examples are covered by
+        # fixture pages (tests/sites/rules/, tests/sites/sitewide/).
+        assert _block(page, "Problems:", "html") and _block(page, "Fixed:", "html")
+        assert "browser scan" in page
+        return
     if rule.python_check is not None:
         assert rule.code in _python_codes("\n".join(_block(page, "Problems:", "python")))
         return
@@ -54,6 +60,8 @@ def test_problem_examples_are_reported(rule):
 @pytest.mark.parametrize("rule", RULES, ids=IDS)
 def test_fixed_examples_are_not_reported(rule):
     page = (DOCS / f"{rule.code}.md").read_text(encoding="utf-8")
+    if rule.browser_only:
+        return  # see test_problem_examples_are_reported
     if rule.python_check is not None:
         assert rule.code not in _python_codes("\n".join(_block(page, "Fixed:", "python")))
         return

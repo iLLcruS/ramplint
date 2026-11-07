@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -34,10 +35,16 @@ def page(url: str, viewport: str, html: str = GOOD, **fields) -> PageSnapshot:
 
 
 class FakeSession:
-    """Stands in for BrowserSession; ``PAGES`` maps a URL to a snapshot factory."""
+    """Stands in for BrowserSession.
+
+    ``PAGES`` maps a URL to a snapshot factory, ``FILES`` a URL to what
+    ``fetch()`` returns (robots.txt, sitemaps, fragments).
+    """
 
     PAGES: dict = {}
+    FILES: dict = {}
     captured: list[tuple[str, str]] = []
+    fetched: list[str] = []
     options: BrowserOptions | None = None
 
     def __init__(self, options: BrowserOptions) -> None:
@@ -49,9 +56,16 @@ class FakeSession:
     def __exit__(self, *exc):
         return None
 
-    def capture(self, url, viewport):
+    def capture(self, url, viewport, probes=()):
         FakeSession.captured.append((url, viewport.name))
         return FakeSession.PAGES.get(url, lambda u, v: page(u, v))(url, viewport.name)
+
+    def fetch(self, url):
+        FakeSession.fetched.append(url)
+        return FakeSession.FILES.get(url)
+
+    def crops(self, snapshot, boxes, padding=8):
+        return [b"\xff\xd8crop" for _ in boxes]
 
 
 @pytest.fixture
@@ -60,7 +74,9 @@ def fake_browser(monkeypatch, tmp_path):
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     monkeypatch.setattr(scan_module, "BrowserSession", FakeSession)
     FakeSession.PAGES = {}
+    FakeSession.FILES = {}
     FakeSession.captured = []
+    FakeSession.fetched = []
     return FakeSession
 
 
@@ -156,8 +172,8 @@ def test_no_page_could_be_checked(fake_browser, capsys):
 def test_verbose_progress(fake_browser, capsys):
     assert main(["http://localhost:8000/", "-v", "--viewport", "desktop,mobile"]) == EXIT_OK
     err = capsys.readouterr().err
-    assert "[1/2] http://localhost:8000/ (desktop)" in err
-    assert "[2/2] http://localhost:8000/ (mobile)" in err
+    assert "[1/1] http://localhost:8000/ (desktop)" in err
+    assert "[1/1] http://localhost:8000/ (mobile)" in err
 
 
 @pytest.mark.parametrize(
@@ -245,7 +261,7 @@ def test_url_filters(fake_browser, tmp_path, capsys):
     assert [url for url, _ in fake_browser.captured] == ["http://localhost:8000/shop/"]
     err = capsys.readouterr().err
     assert "skipped http://localhost:8000/shop/cart/: excluded by the URL filters" in err
-    assert "skipped http://localhost:8000/admin/: excluded" in err
+    assert "not opening http://localhost:8000/admin/: it matches deny" in err
     assert "not opening http://localhost:8000/shop/reset/: it matches deny" in err
     assert "not opening http://localhost:8000/accounts/logout/: it matches deny" in err
     options = fake_browser.options
@@ -286,7 +302,7 @@ def test_ctrl_c(fake_browser, monkeypatch, capsys):
     closed = []
 
     class Interrupted(FakeSession):
-        def capture(self, url, viewport):
+        def capture(self, url, viewport, probes=()):
             raise KeyboardInterrupt
 
         def __exit__(self, *exc):
@@ -330,3 +346,149 @@ def test_same_problem_on_product_pages_is_reported_once(fake_browser, capsys):
     assert "http://localhost:8000/products/1/ body > main > img: RL101" in out
     assert "(and 2 more pages)" in out
     assert "Found 1 problem in 3 of 4 pages." in out
+
+
+def test_crawl_summary_and_coverage(fake_browser, capsys):
+    fake_browser.PAGES["http://localhost:8000/"] = lambda u, v: page(
+        u, v, GOOD.replace("<h1>Ok</h1>", '<h1>Ok</h1><a href="/a/">A</a>')
+    )
+    assert main(["http://localhost:8000/", "-v"]) == EXIT_OK
+    err = capsys.readouterr().err
+    assert "ramplint: crawled 2 pages of 2 URL patterns\n" in err
+    assert "ramplint:   /a/  scanned (1 of 1)" in err
+    assert [url for url, _ in fake_browser.captured] == [
+        "http://localhost:8000/",
+        "http://localhost:8000/a/",
+    ]
+
+
+def test_no_crawl_has_no_summary(fake_browser, capsys):
+    assert main(["http://localhost:8000/", "--no-crawl"]) == EXIT_OK
+    assert "crawled" not in capsys.readouterr().err
+    assert fake_browser.fetched == []
+
+
+def test_django_project_urls_and_samples(fake_browser, tmp_path, capsys):
+    files = {
+        "manage.py": "",
+        "settings.py": "ROOT_URLCONF = 'urls'\nLOGIN_URL = 'login'\n",
+        "urls.py": (
+            "from django.urls import include, path\n"
+            "urlpatterns = [\n"
+            "    path('', v, name='home'),\n"
+            "    path('about/', v, name='about'),\n"
+            "    path('items/<int:pk>/', v, name='item'),\n"
+            "    path('login/', v, name='login'),\n"
+            "    path('x/', include('nowhere.urls')),\n"
+            "]\n"
+        ),
+        "pyproject.toml": (
+            '[tool.ramplint.browser.samples]\n"item" = ["/items/7/"]\n"ghost" = ["/g/"]\n'
+        ),
+    }
+    for name, text in files.items():
+        (tmp_path / name).write_text(text)
+    assert main(["http://localhost:8000/", "-v"]) == EXIT_OK
+    opened = [url for url, _ in fake_browser.captured]
+    assert opened[0] == "http://localhost:8000/"
+    assert set(opened) == {
+        "http://localhost:8000/",
+        "http://localhost:8000/about/",
+        "http://localhost:8000/login/",
+        "http://localhost:8000/items/7/",
+        "http://localhost:8000/g/",
+    }
+    err = capsys.readouterr().err
+    assert "sample 'ghost' matches no URL pattern name" in err
+    assert "ramplint: URL patterns from urls" in err
+    assert "not read: urls.py:7: include('nowhere.urls') is not part of the project" in err
+
+
+def test_login_path():
+    from ramplint.browser.command import DEFAULT_LOGIN_PATH, login_path
+    from ramplint.project.discovery import Project
+    from ramplint.project.settings import Settings
+    from ramplint.project.urls import RoutePart, UrlConf, UrlPattern
+
+    conf = UrlConf("u", [UrlPattern((RoutePart("in/"),), "account_login", None, "u.py", 1)])
+
+    def project(value):
+        return Project(root=Path("."), settings=Settings("s", {"LOGIN_URL": value}))
+
+    assert login_path(None, None) == DEFAULT_LOGIN_PATH
+    assert login_path(project("/signin/"), conf) == "/signin/"
+    assert login_path(project("account_login"), conf) == "/in/"
+    assert login_path(project("unknown"), conf) == DEFAULT_LOGIN_PATH
+    assert login_path(project("account_login"), None) == DEFAULT_LOGIN_PATH
+
+
+def test_coverage_summary_wording():
+    from ramplint.browser.command import coverage_summary
+    from ramplint.browser.frontier import Coverage
+
+    scanned = Coverage("/", scanned=["u"], found={"u"})
+    sample = Coverage("/p/<int:pk>/", has_parameters=True)
+    login = Coverage("/me/", found={"m"}, login_required=["m"])
+    failed = Coverage("/x/", found={"x"}, results={"x": "HTTP 500"})
+    skipped = Coverage("/y/", found={"y"})
+    assert coverage_summary([scanned], 1) == "crawled 1 page of 1 URL pattern"
+    assert coverage_summary([scanned, sample, sample, login, failed, skipped], 3) == (
+        "crawled 3 pages of 1 URL pattern; 2 need a sample URL, 1 needs login, "
+        "1 failed, 1 was skipped"
+    )
+
+
+def test_concurrency_option(fake_browser):
+    assert main(["http://localhost:8000/", "--concurrency", "2", "--no-crawl"]) == EXIT_OK
+    assert fake_browser.options.concurrency == 2
+    assert main(["http://localhost:8000/", "--concurrency", "0"]) == EXIT_ERROR
+
+
+def test_save_auth(fake_browser, monkeypatch, tmp_path, capsys):
+    import ramplint.browser.command as command
+
+    saved = []
+    monkeypatch.setattr(
+        command, "save_auth", lambda url, path, options: saved.append((url, path, options.headed))
+    )
+    target = tmp_path / "admin.json"
+    assert main(["http://localhost:8000/login/", "--save-auth", str(target)]) == EXIT_OK
+    assert saved == [("http://localhost:8000/login/", target, True)]
+    assert f"saved the session to {target}" in capsys.readouterr().err
+    assert main(["http://a/", "http://b/", "--save-auth", str(target)]) == EXIT_ERROR
+    assert "exactly one URL" in capsys.readouterr().err
+
+
+def test_save_auth_without_browser(fake_browser, monkeypatch, tmp_path, capsys):
+    import ramplint.browser.command as command
+
+    def broken(url, path, options):
+        raise BrowserUnavailable("Chromium is not installed")
+
+    monkeypatch.setattr(command, "save_auth", broken)
+    assert main(["http://x/login/", "--save-auth", str(tmp_path / "a.json")]) == EXIT_ERROR
+    assert "Chromium is not installed" in capsys.readouterr().err
+
+
+def test_auth_files_must_exist(fake_browser, tmp_path, capsys):
+    assert main(["http://x/", "--auth", str(tmp_path / "nope.json")]) == EXIT_ERROR
+    assert "does not exist (create it with --save-auth)" in capsys.readouterr().err
+
+
+def test_scan_per_role(fake_browser, tmp_path, monkeypatch, capsys):
+    import ramplint.browser.command as command
+
+    monkeypatch.setattr(command, "unprotected_secret", lambda path: path.stem == "admin")
+    for name in ("admin", "shop"):
+        (tmp_path / f"{name}.json").write_text("{}")
+    fake_browser.PAGES["http://localhost:8000/"] = lambda u, v: page(u, v, BAD)
+    args = ["http://localhost:8000/", "--no-crawl"]
+    code = main(
+        [*args, "--auth", str(tmp_path / "admin.json"), "--auth", str(tmp_path / "shop.json")]
+    )
+    assert code == EXIT_VIOLATIONS
+    captured = capsys.readouterr()
+    assert "[as admin,shop]: RL101" in captured.out
+    assert "scanning as admin" in captured.err and "scanning as shop" in captured.err
+    assert "admin.json holds your session cookies and git does not ignore it" in captured.err
+    assert fake_browser.options.storage_state == str(tmp_path / "shop.json")

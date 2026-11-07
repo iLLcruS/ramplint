@@ -7,6 +7,7 @@ import os
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
+from ramplint.linter import Violation, lint_file
 from ramplint.project.context import TemplateContext
 from ramplint.project.discovery import (
     SKIP_DIRS,
@@ -17,6 +18,7 @@ from ramplint.project.discovery import (
 )
 from ramplint.project.templates import TemplateIndex
 from ramplint.pyforms import is_forms_module
+from ramplint.rules import Rule
 
 #: Folder names that hold templates when there is no Django project to ask.
 TEMPLATE_FOLDER_NAMES = ("templates", "jinja2")
@@ -203,3 +205,15 @@ class Workspace:
             return None
         template = index.load(path)
         return TemplateContext(template, index) if template is not None else None
+
+    # -- linting -----------------------------------------------------------
+    def lint(self, files: Iterable[Path], rules: Iterable[Rule]) -> list[Violation]:
+        """Lint templates and forms modules with their project context."""
+        rules = list(rules)
+        violations: list[Violation] = []
+        for path in files:
+            if path.suffix == ".py":
+                violations.extend(lint_file(path, rules, index=self.python_index(path)))
+            else:
+                violations.extend(lint_file(path, rules, context=self.context_for(path)))
+        return violations

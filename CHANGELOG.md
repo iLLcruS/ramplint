@@ -6,36 +6,77 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-07
+
 ### Added
 
-- Browser scan mode (preview): `ramplint http://localhost:8000/` opens the
-  pages in Chromium and runs the rules on the rendered HTML, including markup
-  added by JavaScript. Needs the new `browser` extra
-  (`pip install "ramplint[browser]"` and `playwright install chromium`).
-  - Problems name the URL, a CSS selector and the viewport(s); hidden elements
-    are skipped and accessible names computed by Chromium are trusted.
-  - New options `--viewport`, `--timeout`, `--delay`, `--wait-for`, `--headed`
-    and `--save-snapshots`, and a `[tool.ramplint.browser]` config table.
-  - Choosing pages: `--max-pages`, `--include` and `--exclude-url` (globs on
-    the path or the full URL); `--per-pattern` and `--no-crawl` for the
-    crawler. Logout URLs are never opened; `deny` in the config adds patterns.
-  - Config keys `base-url`, `max-pages`, `per-pattern`, `crawl`, `include`,
-    `exclude` and `deny`. With `base-url`, browser options without URLs scan
-    that site.
-  - Ctrl+C closes the browser and exits with 130.
-  - Pages are scrolled to the bottom before they are checked, so lazy-loaded
-    content is included (at most 20 screens, within `--timeout`).
-  - `--screenshot-format png` and `screenshot-format` in the config
-    (default: JPEG, quality 70).
-  - `BrowserSession.crops()` cuts element pictures with a few pixels of
-    padding out of the full-page screenshot, also from saved snapshots.
-  - Text, JSON, GitHub, SARIF and HTML reports show browser findings.
-  - The same problem (rule, element and message) on pages of one URL pattern
-    (`/products/1/`, `/products/2/`; numbers, UUIDs, dates and hashes in the
-    path, query values) is reported once and lists every page.
+- **Browser scan.** `ramplint http://localhost:8000/` crawls a running site in
+  Chromium and checks the rendered pages, including markup added by
+  JavaScript. Needs the `browser` extra (`pip install "ramplint[browser]"`
+  and `playwright install chromium`).
+  - `--runserver` starts the Django project in the current folder with
+    template source maps, scans it and stops it.
+  - Crawling: links, GET forms, `<link rel="next">`, meta refresh, `hx-get`,
+    `robots.txt` and sitemaps, and every URL without parameters from the
+    Django URLconf. The page budget is spent on different URL patterns:
+    `--max-pages` (50), `--per-pattern` (2), patterns not seen yet first.
+    Same origin and GET only; logout, delete, remove and `/admin/` URLs are
+    never opened, also when only the URL name says so. `--include`,
+    `--exclude-url`, `--no-crawl`, `--concurrency`.
+  - Coverage per URL pattern: scanned, needs sample, needs login, denied,
+    error or skipped, on stderr (`-v` for every pattern) and in the report.
+  - Menus, dialogs, tabs and `<details>` are opened one by one on a fresh page
+    and the markup that appeared is checked (`--max-states`, 10 per page).
+    Navigation and non-GET requests are blocked meanwhile.
+  - API inventory: XHR and fetch requests by method and URL pattern; HTML
+    fragments (`hx-get`, fetched HTML) are checked like partial templates;
+    `hx-post` and similar targets are listed, never sent.
+  - Pages are scrolled to the bottom first so lazy content is included; pages
+    that never reach network idle finish within `--timeout`.
+  - Pages behind a login: `--save-auth FILE` saves a session you log in to by
+    hand (no passwords), `--auth FILE` scans with it; several files scan once
+    per role and findings say which roles saw them. Pages that redirect to
+    `LOGIN_URL` are reported as needing login; ramplint warns when a session
+    file is not ignored by git.
+  - Report folder: `--format html -o DIR/` writes `index.html`, a page per URL
+    and viewport with a marked-up screenshot and element pictures,
+    `site-map.html`, `api.html` and `scan.json`; `--embed-screenshots` writes
+    a single file. Every page passes ramplint.
+  - Baselines: `--write-baseline FILE` and `--baseline FILE` report problems
+    as new, existing or fixed and fail only on new ones.
+  - Options and the `[tool.ramplint.browser]` table: `--viewport`,
+    `--timeout`, `--delay`, `--wait-for`, `--headed`, `--save-snapshots`,
+    `--screenshot-format`, `base-url`, `samples` and the keys of the options
+    above. Ctrl+C closes the browser and exits with 130.
+- **Template source maps.** `ramplint.django.SourceMapLoader` marks every
+  element with its template, line and column while `DEBUG` is on; browser
+  findings are then reported at the template location (text, GitHub
+  annotations, SARIF), the same problem on many pages is one finding, and a
+  problem the template linter also finds is reported once, *confirmed in the
+  browser*.
+- **Rendered-page rules:** `RL801` color-contrast, `RL802` target-size,
+  `RL803` reflow, `RL804` focus-visible, `RL805` focus-obscured, `RL806`
+  dialog-focus (and keyboard traps), `RL807` expanded-state. Text over
+  images is listed as a manual check, not a failure.
+- **Site-wide rules:** `RL901` page-title-unique, `RL902`
+  consistent-navigation, `RL903` consistent-identification, `RL904`
+  bypass-blocks.
+- `--list-urls` shows the URL patterns of the Django project, read from
+  `ROOT_URLCONF` with `ast`: `path()`, `re_path()`, `include()` with
+  namespaces, `i18n_patterns()` and DRF routers; what cannot be read is
+  listed.
 - `Violation` has optional `url`, `selector`, `viewport`, `bbox`,
-  `screenshot`, `template` and `pages` fields (`None` for templates; template
-  results and JSON output are unchanged) and a `locations` property.
+  `screenshot`, `template`, `pages`, `state`, `role`, `confirmed` and
+  `baseline` fields (`None` for templates, so template results and their JSON
+  are unchanged).
+- The demo project in `examples/django_project` runs
+  (`pip install django jinja2`, `python manage.py runserver`).
+
+### Changed
+
+- `--list-rules` marks the rules that need the browser scan.
+- CI runs the browser tests in their own job and checks the installed wheel
+  with a browser scan.
 
 ## [0.6.0] - 2026-10-21
 
@@ -274,7 +315,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Configuration via `[tool.ramplint]` in `pyproject.toml`.
 - pre-commit hook.
 
-[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.6.0...HEAD
+[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.7.0...HEAD
+[0.7.0]: https://github.com/iLLcruS/ramplint/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/iLLcruS/ramplint/compare/0.5.1...0.6.0
 [0.5.1]: https://github.com/iLLcruS/ramplint/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/iLLcruS/ramplint/compare/0.4.1...0.5.0

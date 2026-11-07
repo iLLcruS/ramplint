@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-"""Demo Django project for ramplint (not runnable: Django is not required)."""
+"""Demo Django project for ramplint.
+
+ramplint reads it without Django. To run it (and scan it in a browser):
+pip install django jinja2 && python manage.py runserver
+"""
 
 import os
 import sys

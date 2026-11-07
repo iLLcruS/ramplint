@@ -37,7 +37,11 @@ dependencies = ["tomli>=1.1; python_version < '3.11'"]
 
 [project.optional-dependencies]
 # greenlet: coverage follows Playwright's greenlets (see [tool.coverage.run]).
-dev = ["pytest>=7", "pytest-cov>=4", "ruff>=0.6", "jsonschema>=4", "greenlet>=3"]
+# django and jinja2: the demo project and the template source map loader are tested.
+dev = [
+    "pytest>=7", "pytest-cov>=4", "ruff>=0.6", "jsonschema>=4", "greenlet>=3",
+    "django>=4.2", "jinja2>=3",
+]
 # Browser scan mode (ramplint https://...). Also run: playwright install chromium
 browser = ["playwright>=1.45"]
 
@@ -85,6 +89,8 @@ show_missing = true
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+# Fixture projects imitate user code (third-party imports ruff cannot sort).
+extend-exclude = ["tests/projects"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM"]

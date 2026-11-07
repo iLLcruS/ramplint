@@ -7,7 +7,9 @@
   const STYLES = [
     "color", "background-color", "background-image", "font-size", "font-weight",
     "opacity", "position", "display", "visibility", "outline-style", "outline-width",
-    "outline-color", "overflow-x", "overflow-y", "z-index",
+    "outline-color", "overflow-x", "overflow-y", "z-index", "box-shadow",
+    "border-top-color", "border-bottom-color", "border-top-style", "text-decoration-line",
+    "cursor",
   ];
   const all = Array.from(document.querySelectorAll("*"));
 
@@ -65,15 +67,59 @@
       box: [rect.left + sx, rect.top + sy, rect.width, rect.height],
       visible: visible(el),
       styles,
+      // Template location from ramplint's Django source map loader.
+      source: el.getAttribute("data-rl-src"),
     });
   });
-  // Only now: changing attributes in the loop above would make the browser
+  // Colours of elements with their own text, for the contrast check. The
+  // background is every background colour from the element up to the first
+  // opaque one; images and gradients on the way are flagged.
+  const MAX_TEXTS = 3000;
+  const texts = [];
+  const ownText = (el) =>
+    Array.from(el.childNodes).some((n) => n.nodeType === Node.TEXT_NODE && n.data.trim());
+  const opaque = (color) => /^rgb\(/.test(color) || /,\s*1\)$/.test(color);
+  all.forEach((el, position) => {
+    if (texts.length >= MAX_TEXTS || !elements[position].visible || !ownText(el)) return;
+    if (["script", "style", "noscript", "template", "title", "option"].includes(el.localName)) return;
+    const style = getComputedStyle(el);
+    const backgrounds = [];
+    let overImage = false;
+    let opacity = 1;
+    for (let node = el; node; node = node.parentElement) {
+      const s = node === el ? style : getComputedStyle(node);
+      opacity *= parseFloat(s.opacity) || 0;
+      if (s.backgroundImage && s.backgroundImage !== "none") overImage = true;
+      const color = s.backgroundColor;
+      if (color && color !== "transparent" && color !== "rgba(0, 0, 0, 0)") {
+        backgrounds.push(color);
+        if (opaque(color)) break;
+      }
+      if (overImage) break;
+    }
+    texts.push({
+      element: String(position + 1),
+      color: style.color,
+      backgrounds,
+      over_image: overImage,
+      font_size: parseFloat(style.fontSize) || 16,
+      font_weight: parseInt(style.fontWeight, 10) || 400,
+      opacity,
+    });
+  });
+
+  // Only now: changing attributes in the loops above would make the browser
   // recompute styles and layout for every element.
-  all.forEach((el, position) => el.setAttribute("data-rl-node", String(position + 1)));
+  all.forEach((el, position) => {
+    el.setAttribute("data-rl-node", String(position + 1));
+    // Rules must never see the source map.
+    el.removeAttribute("data-rl-src");
+  });
   const root = document.documentElement;
   // A JSON string crosses the browser boundary much faster than an object tree.
   return JSON.stringify({
     elements,
+    texts,
     page: [root.scrollWidth, root.scrollHeight],
     title: document.title,
   });

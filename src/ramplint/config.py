@@ -122,7 +122,11 @@ def _browser_section(path: Path, section: object) -> dict[str, Any]:
             if not isinstance(value, str) or not is_url(value.strip()):
                 raise ConfigError(f"{where}.{key} must be an http:// or https:// URL")
             result["base_url"] = value.strip()
-        elif normalized in ("max-pages", "per-pattern"):
+        elif normalized == "max-states":
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ConfigError(f"{where}.{key} must be a whole number (0 turns it off)")
+            result["max_states"] = value
+        elif normalized in ("max-pages", "per-pattern", "concurrency"):
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise ConfigError(f"{where}.{key} must be a whole number above 0")
             result[normalized.replace("-", "_")] = value
@@ -134,6 +138,18 @@ def _browser_section(path: Path, section: object) -> dict[str, Any]:
             if not isinstance(value, bool):
                 raise ConfigError(f"{where}.{key} must be true or false")
             result["crawl"] = value
+        elif normalized == "auth":
+            files = [value] if isinstance(value, str) else value
+            if (
+                not isinstance(files, list)
+                or not files
+                or not all(isinstance(f, str) and f for f in files)
+            ):
+                raise ConfigError(f"{where}.{key} must be a file name or a list of them")
+            base = path.parent
+            result["auth"] = [str(base / f) for f in files]
+        elif normalized == "samples":
+            result["samples"] = _samples(f"{where}.{key}", value)
         elif normalized in ("include", "exclude", "deny"):
             if not isinstance(value, list) or not all(isinstance(v, str) and v for v in value):
                 raise ConfigError(f"{where}.{key} must be a list of URL patterns")
@@ -141,3 +157,16 @@ def _browser_section(path: Path, section: object) -> dict[str, Any]:
         else:
             raise ConfigError(f"{where}: unknown option {key}")
     return result
+
+
+def _samples(where: str, table: object) -> dict[str, list[str]]:
+    """``[tool.ramplint.browser.samples]``: URL pattern name -> example paths."""
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where} must be a table of URL names")
+    samples: dict[str, list[str]] = {}
+    for name, paths in table.items():
+        valid = isinstance(paths, list) and paths
+        if not valid or not all(isinstance(p, str) and p.startswith("/") for p in paths):
+            raise ConfigError(f'{where}."{name}" must be a list of paths starting with /')
+        samples[name] = paths
+    return samples

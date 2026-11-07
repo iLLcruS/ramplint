@@ -7,27 +7,25 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from ramplint import __version__
-from ramplint.browser.options import SCREENSHOT_FORMATS, BrowserOptions, is_url
-from ramplint.config import ConfigError, load_config
-from ramplint.linter import DEFAULT_EXCLUDE_DIRS, DEFAULT_EXTENSIONS, Violation, lint_file
+from ramplint.browser.command import BROWSER_OPTIONS, add_browser_arguments, run_browser
+from ramplint.browser.options import is_url
+from ramplint.config import Config, ConfigError, load_config
+from ramplint.exit_codes import EXIT_ERROR, EXIT_INTERRUPTED, EXIT_OK, EXIT_VIOLATIONS
+from ramplint.linter import DEFAULT_EXCLUDE_DIRS, DEFAULT_EXTENSIONS, Violation
 from ramplint.project.discovery import SettingsNotFound
-from ramplint.project.listing import describe_projects, print_verbose
+from ramplint.project.listing import describe_projects, describe_urls, print_verbose
+from ramplint.project.urls import project_urlconf
 from ramplint.project.workspace import Workspace
 from ramplint.reporters import (
     REPORTERS,
     STATISTICS_WRITERS,
     WriteReport,
     available_formats,
-    browser_report,
     summary_line,
 )
 from ramplint.rules import all_rules, find_rule, rule_docs, select_rules, unknown_selectors
 
-EXIT_OK = 0
-EXIT_VIOLATIONS = 1
-EXIT_ERROR = 2
-#: Ctrl+C, the usual 128 + SIGINT.
-EXIT_INTERRUPTED = 130
+__all__ = ["EXIT_ERROR", "EXIT_INTERRUPTED", "EXIT_OK", "EXIT_VIOLATIONS", "build_parser", "main"]
 
 
 def _csv(value: str) -> list[str]:
@@ -100,6 +98,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="show the Django project, settings and template folders ramplint uses, and exit",
     )
     parser.add_argument(
+        "--list-urls",
+        action="store_true",
+        help="show the URL patterns of the Django project (read from ROOT_URLCONF), and exit",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -122,99 +125,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
-    browser = parser.add_argument_group(
-        "browser scan",
-        "Pass URLs instead of paths to check rendered pages in Chromium. "
-        'Needs: pip install "ramplint[browser]" && playwright install chromium',
-    )
-    browser.add_argument(
-        "--viewport",
-        type=_csv,
-        metavar="SIZES",
-        help="comma-separated viewports: desktop, tablet, mobile or WIDTHxHEIGHT "
-        "(default: desktop)",
-    )
-    browser.add_argument(
-        "--timeout",
-        type=float,
-        metavar="SECONDS",
-        help="time to wait for one page to load (default: 30)",
-    )
-    browser.add_argument(
-        "--delay", type=int, metavar="MS", help="pause between two pages in milliseconds"
-    )
-    browser.add_argument(
-        "--wait-for",
-        metavar="SELECTOR",
-        help="CSS selector that must appear before a page is checked",
-    )
-    browser.add_argument(
-        "--headed", action="store_true", default=None, help="show the browser window"
-    )
-    browser.add_argument(
-        "--save-snapshots",
-        type=Path,
-        metavar="DIR",
-        help="save the rendered HTML, element data and screenshots of every page to DIR",
-    )
-    browser.add_argument(
-        "--screenshot-format",
-        choices=SCREENSHOT_FORMATS,
-        help="image format of screenshots (default: jpeg)",
-    )
-    browser.add_argument(
-        "--max-pages", type=int, metavar="N", help="check at most N pages (default: 50)"
-    )
-    browser.add_argument(
-        "--per-pattern",
-        type=int,
-        metavar="N",
-        help="when crawling, check at most N pages per URL pattern such as /products/<id>/ "
-        "(default: 2)",
-    )
-    browser.add_argument(
-        "--include",
-        action="append",
-        metavar="GLOB",
-        help="only check URLs matching GLOB (path like /shop/* or a full URL; repeatable)",
-    )
-    browser.add_argument(
-        "--exclude-url",
-        action="append",
-        metavar="GLOB",
-        help="do not check URLs matching GLOB (repeatable)",
-    )
-    browser.add_argument(
-        "--no-crawl",
-        action="store_const",
-        const=True,
-        default=None,
-        help="check only the given URLs, do not follow links",
-    )
+    add_browser_arguments(parser)
     return parser
-
-
-_BROWSER_OPTIONS = (
-    "viewport",
-    "timeout",
-    "delay",
-    "wait_for",
-    "headed",
-    "save_snapshots",
-    "screenshot_format",
-    "max_pages",
-    "per_pattern",
-    "include",
-    "exclude_url",
-    "no_crawl",
-)
 
 
 def _list_rules() -> None:
     rules = all_rules()
     width = max(len(rule.name) for rule in rules)
     for rule in rules:
-        print(f"{rule.code}  {rule.name:<{width}}  {rule.summary}  [WCAG {rule.wcag}]")
+        browser = "  [browser]" if rule.browser_only else ""
+        print(f"{rule.code}  {rule.name:<{width}}  {rule.summary}  [WCAG {rule.wcag}]{browser}")
 
 
 def _explain(selector: str) -> int:
@@ -298,8 +218,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     rules = select_rules(select, ignore)
 
     urls = [p for p in args.paths if is_url(p)]
-    used = [name for name in _BROWSER_OPTIONS if getattr(args, name) is not None]
+    used = [name for name in BROWSER_OPTIONS if getattr(args, name) is not None]
     base_url = config.browser.get("base_url")
+    if args.runserver:
+        if args.paths:
+            print(
+                "ramplint: error: --runserver scans the project in this folder; "
+                "do not pass paths or URLs",
+                file=sys.stderr,
+            )
+            return EXIT_ERROR
+        return run_browser(args, [], rules, config, _workspace(args, config), _write_output)
     if not args.paths and used and base_url:
         # ``ramplint --viewport mobile`` with ``base-url`` in the config.
         urls = [base_url]
@@ -310,7 +239,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.list_templates:
             print("ramplint: error: --list-templates does not work with URLs", file=sys.stderr)
             return EXIT_ERROR
-        return _browser_main(args, urls, rules, config.browser)
+        return run_browser(args, urls, rules, config, _workspace(args, config), _write_output)
     if used:
         flag = "--" + used[0].replace("_", "-")
         print(
@@ -320,21 +249,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return EXIT_ERROR
 
-    extensions = args.extensions or config.extensions or list(DEFAULT_EXTENSIONS)
-    exclude = [*config.exclude, *args.exclude]
-
-    settings = args.settings or config.django_settings
-    settings_source = "--settings" if args.settings else "pyproject.toml"
-    workspace = Workspace(
-        extensions=extensions,
-        exclude=exclude,
-        skip_dirs=DEFAULT_EXCLUDE_DIRS,
-        django=config.django and not args.no_django,
-        settings=settings,
-        settings_source=settings_source if settings else None,
-        template_dirs=config.template_dirs,
-        config_root=config.source.parent if config.source else None,
-    )
+    workspace = _workspace(args, config)
+    if args.list_urls:
+        return _list_urls(args, workspace)
 
     try:
         files = list(workspace.files(args.paths))
@@ -357,16 +274,43 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.verbose:
         print_verbose(workspace, files, sys.stderr)
 
-    violations: list[Violation] = []
-    files_checked = 0
-    for path in files:
-        files_checked += 1
-        if path.suffix == ".py":
-            violations.extend(lint_file(path, rules, index=workspace.python_index(path)))
-        else:
-            violations.extend(lint_file(path, rules, context=workspace.context_for(path)))
+    return _write_output(args, workspace.lint(files, rules), len(files))
 
-    return _write_output(args, violations, files_checked)
+
+def _workspace(args: argparse.Namespace, config: Config) -> Workspace:
+    settings = args.settings or config.django_settings
+    settings_source = "--settings" if args.settings else "pyproject.toml"
+    return Workspace(
+        extensions=args.extensions or config.extensions or list(DEFAULT_EXTENSIONS),
+        exclude=[*config.exclude, *args.exclude],
+        skip_dirs=DEFAULT_EXCLUDE_DIRS,
+        django=config.django and not args.no_django,
+        settings=settings,
+        settings_source=settings_source if settings else None,
+        template_dirs=config.template_dirs,
+        config_root=config.source.parent if config.source else None,
+    )
+
+
+def _list_urls(args: argparse.Namespace, workspace: Workspace) -> int:
+    if args.format not in (None, "text", "json"):
+        print("ramplint: error: --list-urls works with --format text or json", file=sys.stderr)
+        return EXIT_ERROR
+    start = Path(args.paths[0]) if args.paths else workspace.cwd
+    try:
+        project = workspace.project_for(start)
+    except SettingsNotFound as exc:
+        print(f"ramplint: error: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+    if project is None or project.settings_module is None:
+        print("ramplint: error: no Django project found (no manage.py)", file=sys.stderr)
+        return EXIT_ERROR
+    conf = project_urlconf(project)
+    if conf is None:
+        print(f"ramplint: error: no ROOT_URLCONF in {project.settings_module}", file=sys.stderr)
+        return EXIT_ERROR
+    describe_urls(workspace, project, conf, args.format or "text", sys.stdout)
+    return EXIT_OK
 
 
 def _write_output(args: argparse.Namespace, violations: list[Violation], files_checked: int) -> int:
@@ -396,116 +340,6 @@ def _write_output(args: argparse.Namespace, violations: list[Violation], files_c
     if violations and not args.exit_zero:
         return EXIT_VIOLATIONS
     return EXIT_OK
-
-
-def _browser_options(args: argparse.Namespace, config_values: dict) -> BrowserOptions:
-    """``[tool.ramplint.browser]`` overridden by the command line. Raises ValueError."""
-    from ramplint.browser.options import BrowserOptions, parse_viewport
-
-    options = BrowserOptions(**config_values)
-    if args.viewport:
-        options.viewports = [parse_viewport(v) for v in args.viewport]
-    if args.timeout is not None:
-        if args.timeout <= 0:
-            raise ValueError("--timeout must be above 0")
-        options.timeout = args.timeout
-    if args.delay is not None:
-        if args.delay < 0:
-            raise ValueError("--delay must not be negative")
-        options.delay = args.delay
-    if args.wait_for:
-        options.wait_for = args.wait_for
-    if args.headed:
-        options.headed = True
-    if args.save_snapshots is not None:
-        options.save_snapshots = str(args.save_snapshots)
-    if args.screenshot_format:
-        options.screenshot_format = args.screenshot_format
-    for name in ("max_pages", "per_pattern"):
-        value = getattr(args, name)
-        if value is not None:
-            if value < 1:
-                raise ValueError(f"--{name.replace('_', '-')} must be above 0")
-            setattr(options, name, value)
-    if args.include:
-        options.include = list(args.include)
-    if args.exclude_url:
-        options.exclude = [*options.exclude, *args.exclude_url]
-    if args.no_crawl:
-        options.crawl = False
-    return options
-
-
-def _start_urls(urls: list[str], options: BrowserOptions) -> list[str]:
-    """The given URLs without duplicates, filtered and capped by the options."""
-    result: list[str] = []
-    for url in dict.fromkeys(urls):
-        if options.denied(url):
-            print(f"ramplint: warning: not opening {url}: it matches deny", file=sys.stderr)
-        elif not options.allowed(url):
-            print(f"ramplint: warning: skipped {url}: excluded by the URL filters", file=sys.stderr)
-        else:
-            result.append(url)
-    if len(result) > options.max_pages:
-        print(
-            f"ramplint: warning: checking the first {options.max_pages} of {len(result)} URLs "
-            "(--max-pages)",
-            file=sys.stderr,
-        )
-        result = result[: options.max_pages]
-    return result
-
-
-def _browser_main(
-    args: argparse.Namespace, urls: list[str], rules: list, config_values: dict
-) -> int:
-    from ramplint.browser.scan import scan
-    from ramplint.browser.session import BrowserUnavailable
-
-    try:
-        options = _browser_options(args, config_values)
-    except ValueError as exc:
-        print(f"ramplint: error: {exc}", file=sys.stderr)
-        return EXIT_ERROR
-
-    show_progress = args.verbose or sys.stderr.isatty()
-
-    def progress(index: int, total: int, url: str, viewport: str) -> None:
-        if show_progress:
-            print(f"[{index}/{total}] {url} ({viewport})", file=sys.stderr)
-
-    urls = _start_urls(urls, options)
-    if not urls:
-        print("ramplint: error: no URL left to check", file=sys.stderr)
-        return EXIT_ERROR
-
-    try:
-        result = scan(urls, rules, options, progress)
-    except BrowserUnavailable as exc:
-        print(f"ramplint: error: {exc}", file=sys.stderr)
-        return EXIT_ERROR
-    except KeyboardInterrupt:
-        # The session is already closed (context manager); no traceback.
-        print("ramplint: interrupted", file=sys.stderr)
-        return EXIT_INTERRUPTED
-
-    for snapshot in result.snapshots:
-        where = f"{snapshot.url} ({snapshot.viewport})"
-        if not snapshot.ok:
-            print(f"ramplint: warning: cannot open {where}: {snapshot.error}", file=sys.stderr)
-        elif not snapshot.is_html:
-            print(
-                f"ramplint: warning: skipped {where}: not an HTML page ({snapshot.content_type})",
-                file=sys.stderr,
-            )
-        elif snapshot.status is not None and snapshot.status >= 400:
-            print(f"ramplint: warning: {where} returned HTTP {snapshot.status}", file=sys.stderr)
-    if not result.pages_checked:
-        print("ramplint: error: no page could be checked", file=sys.stderr)
-        return EXIT_ERROR
-
-    with browser_report([v.name for v in options.viewports]):
-        return _write_output(args, result.violations, result.pages_checked)
 
 
 if __name__ == "__main__":  # pragma: no cover

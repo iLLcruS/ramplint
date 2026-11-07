@@ -119,15 +119,15 @@ def test_examples_directory(capsys, monkeypatch):
     by_file: dict[str, list[str]] = {}
     for v in data["violations"]:
         by_file.setdefault(Path(v["path"]).name, []).append(v["code"])
-    assert data["files_checked"] == 23
+    assert data["files_checked"] == 24
     assert len(data["violations"]) == 62
     # Clean templates must stay silent - they guard against false positives.
     assert "list_fixed.html" not in by_file
     assert "tricky_but_valid.html" not in by_file
     assert sorted(by_file["list.html"]) == ["RL101", "RL201", "RL301", "RL401", "RL501", "RL502"]
-    # The demo covers every rule.
+    # The demo covers every rule that checks templates.
     all_codes = {code for codes in by_file.values() for code in codes}
-    assert all_codes == {rule.code for rule in all_rules()}
+    assert all_codes == {rule.code for rule in all_rules() if not rule.browser_only}
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX pipe semantics")
