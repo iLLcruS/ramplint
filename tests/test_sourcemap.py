@@ -217,7 +217,8 @@ def test_dev_server_serves_annotated_pages(tmp_path):
         html = urllib.request.urlopen(server.url, timeout=10).read().decode()
         assert 'data-rl-src="templates/base.html:3:1"' in html
         assert 'data-rl-src="catalog/templates/catalog/product_list.html:' in html
-        assert "Starting development server" in server.output
+        # The server's log is captured (its wording changes between Django versions).
+        assert '"GET / HTTP/1.1" 200' in server.output
     assert server.output == ""  # cleaned up
 
 
