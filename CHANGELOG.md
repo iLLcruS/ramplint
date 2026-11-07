@@ -6,6 +6,19 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-07
+
+The first release of the browser scan on PyPI: 0.7.0 was tagged but its
+release build failed, so it was never published. Everything listed under
+0.7.0 is in this version.
+
+### Fixed
+
+- The release build runs the browser tests (with Chromium) before
+  publishing, so the coverage check sees them.
+- A development server test no longer depends on the wording of Django's
+  startup message.
+
 ## [0.7.0] - 2026-11-07
 
 ### Added
@@ -315,7 +328,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Configuration via `[tool.ramplint]` in `pyproject.toml`.
 - pre-commit hook.
 
-[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.7.0...HEAD
+[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.7.1...HEAD
+[0.7.1]: https://github.com/iLLcruS/ramplint/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/iLLcruS/ramplint/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/iLLcruS/ramplint/compare/0.5.1...0.6.0
 [0.5.1]: https://github.com/iLLcruS/ramplint/compare/0.5.0...0.5.1
