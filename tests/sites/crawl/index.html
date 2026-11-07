@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Crawl home</title></head>
+<body>
+<main>
+  <h1>Home</h1>
+  <a href="about/">About</a>
+  <a href="logout/">Log out</a>
+  <ul id="items"></ul>
+  <div hx-get="fragments/promo.html"></div>
+</main>
+<script>
+fetch("api/items.json")
+  .then((response) => response.json())
+  .then((items) => {
+    document.getElementById("items").innerHTML = items.map((i) => `<li>${i}</li>`).join("");
+  });
+</script>
+</body>
+</html>

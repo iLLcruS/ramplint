@@ -46,7 +46,7 @@ examples/templates/accounts/login.html:10:3: RL401 <input type="text"> has no as
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 62 problems in 16 of 23 files.
+Found 62 problems in 16 of 24 files.
 ```
 
 See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/examples/README.md) for what each demo template contains.
@@ -56,13 +56,13 @@ See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/example
 - **Knows your Django project.** Reads `TEMPLATES` and `INSTALLED_APPS` from your settings (without importing them) and lints exactly the folders Django loads templates from.
 - **Checks Django forms.** Finds fields rendered with `{{ field }}` or `{% render_field %}` but no label, empty `label=""` in `forms.py`, and custom widgets that lose the id their `<label for>` points to.
 - **Sees across templates.** Follows `{% extends %}` and `{% include %}`: a skipped heading after the `<h1>` in `base.html`, an empty page title or a label for a field in an included partial are all checked.
-- **39 rules.** Images, tables, lists, landmarks, forms, controls, page language and WAI-ARIA, each with a documentation page.
+- **50 rules.** Images, tables, lists, landmarks, forms, controls, page language and WAI-ARIA in templates, plus contrast, focus, target size, reflow and site-wide consistency in the browser scan, each with a documentation page.
 - **Template-aware.** Django and Jinja2 tags, variables and comments are understood, not stripped blindly.
 - **Low noise.** If something is only known at render time (`{% include %}`, `{{ form.email }}`, `{{ widget.attrs }}`, `{% block %}`), ramplint assumes the best and stays quiet.
 - **Zero dependencies.** Pure Python standard library (plus `tomli` on Python < 3.11).
 - **Made for CI.** Exit codes, JSON output, GitHub Actions annotations and a pre-commit hook.
 - **Fast.** No browser and no rendering. A whole project is checked in well under a second.
-- **Also in the browser.** Pass URLs to check rendered pages in Chromium (`pip install "ramplint[browser]"`).
+- **Also in the browser.** `ramplint --runserver` crawls your Django project in Chromium, opens menus and dialogs, and reports problems at the template lines that produced them (`pip install "ramplint[browser]"`).
 
 ## Installation
 
@@ -126,11 +126,11 @@ Project   .
 Settings  config.settings.dev (from manage.py)
 Template folders:
   templates           DIRS          4 templates
-  catalog/templates   app catalog   1 template
+  catalog/templates   app catalog   2 templates
   accounts/templates  app accounts  2 templates
   catalog/jinja2      app catalog   1 template (jinja2)
 
-8 templates and 1 forms module to lint.
+9 templates and 1 forms module to lint.
 ```
 
 `--list-templates --format json` gives the same as data, and `--verbose` prints
@@ -244,7 +244,7 @@ $ ramplint examples/ --statistics
 1  RL704  aria-required-attr
 1  RL705  aria-hidden-focus
 
-Found 62 problems in 16 of 23 files.
+Found 62 problems in 16 of 24 files.
 ```
 
 It works with `--format text` (default) and `--format json`.
@@ -255,55 +255,144 @@ It works with `--format text` (default) and `--format json`.
 | `1`       | Problems found               |
 | `2`       | Usage or configuration error |
 
-## Browser scan (preview)
+## Browser scan
 
-Templates are not the whole page: JavaScript adds markup and some problems only
-exist once a page is rendered. Pass URLs instead of paths and ramplint opens
-them in Chromium and runs the rules on the page the browser actually shows.
+Templates are not the whole page: JavaScript adds markup, CSS decides colours
+and sizes, and menus and dialogs only exist once you open them. The browser
+scan opens your site in Chromium, finds its pages, checks what is actually
+rendered - and, for a Django project, still points every problem at the
+template line that produced it.
 
 ```bash
 pip install "ramplint[browser]"
 playwright install chromium
 
-ramplint http://localhost:8000/ http://localhost:8000/products/
-ramplint http://localhost:8000/ --viewport desktop,mobile
-ramplint http://localhost:8000/ --format html -o a11y-report.html
+ramplint --runserver                        # start this Django project, crawl it, stop it
+ramplint http://localhost:8000/             # crawl a site that is already running
+ramplint --runserver --format html -o a11y/ # report folder with screenshots
 ```
 
 ```text
-http://localhost:8000/ body > main > button:nth-of-type(2): RL501 <button> has no accessible name; add text or an aria-label (icon-only buttons need one) [button-name]
-http://localhost:8000/ #logo @mobile: RL101 <img> is missing an alt attribute (use alt="" for decorative images) [img-alt]
+catalog/templates/catalog/product_list.html:8:1: RL301 Heading level skips from <h1> to <h3>; use <h2> here or restructure the outline [heading-order] (on http://127.0.0.1:8000/ #content > h3, confirmed in the browser)
+templates/base.html:7:3: RL603 <title> is empty; describe the page, e.g. <title>Orders | Shop</title> [document-title] (on http://127.0.0.1:8000/ html > head > title and 2 more pages)
+http://localhost:8000/ #menu-img (after clicking "Menu" (#menu-toggle)): RL101 <img> is missing an alt attribute (use alt="" for decorative images) [img-alt]
 ```
 
-- Every problem names the page, a CSS selector of the element and, when you
-  scan several viewports, the ones it was seen in.
-- Elements that are not rendered (`display: none`, `visibility: hidden`) are
-  skipped, and when Chromium computes an accessible name (for example one set
-  by JavaScript), ramplint trusts it.
-- `<!-- ramplint: ignore ... -->` comments work in rendered pages too.
-- The same problem on pages that differ only in an id (`/products/1/`,
-  `/products/2/`) comes from the same template, so it is reported once, on the
-  first page, with `(and 2 more pages)`. JSON and SARIF list every page.
-- Pages that fail to load, return an error status or are not HTML are reported
-  on stderr; ramplint exits with 2 when no page could be checked.
+### What it does
 
-Options: `--viewport` (`desktop`, `tablet`, `mobile` or `WIDTHxHEIGHT`),
-`--timeout SECONDS`, `--delay MS`, `--wait-for SELECTOR` (for pages that render
-late), `--headed`, `--save-snapshots DIR` (rendered HTML, element data and
-screenshots of every page) and `--screenshot-format png` (default: JPEG).
+- **Finds the pages.** It reads `ROOT_URLCONF` with `ast` (never importing your
+  code) and starts from every URL without parameters, then follows links, GET
+  forms, `<link rel="next">`, `hx-get` and the sitemap from `robots.txt`.
+  `ramplint --list-urls` shows what it found.
+- **Spends the page budget on templates, not on more of the same.** URLs are
+  grouped by URL pattern (`/products/<int:pk>/`); at most `--per-pattern` (2) of
+  each are opened, patterns not seen yet come first, and the total is capped by
+  `--max-pages` (50). Patterns with parameters that no link leads to are listed
+  as **needs sample**: add example URLs in the config.
+- **Stays safe.** Same origin only, GET only, and logout, delete and admin URLs
+  are never opened (`deny` adds more, by URL or by URL name).
+- **Opens menus, dialogs, tabs and `<details>`** (up to `--max-states`, 10 per
+  page) on a fresh page each time and checks the markup that appeared. While it
+  does, the page cannot navigate, open windows or send anything but GET.
+- **Checks what only a browser knows** (rules RL801-RL807): contrast, target
+  size, reflow at 320 px, visible focus, focus hidden by sticky banners, dialog
+  focus and keyboard traps, `aria-expanded` that does not change.
+- **Compares pages** (RL901-RL904): duplicate titles, navigation in a
+  different order, the same control named differently, no way to skip
+  repeated navigation.
+- **Lists what the pages call:** XHR and fetch endpoints, HTML fragments
+  (checked like partial templates) and `hx-post` targets (never sent).
+- Hidden elements are skipped, accessible names Chromium computes are trusted,
+  and `<!-- ramplint: ignore ... -->` comments work in rendered pages too.
 
-Before checking a page, ramplint waits for it to load and for the network to
-go quiet (pages that poll never do; the wait is bounded by `--timeout`), then
-scrolls down so lazy-loaded content and infinite scroll show up (at most 20
-screens) and scrolls back to the top.
+### Problems point at templates
 
-Which pages: `--max-pages N` (default 50), `--include GLOB` and
-`--exclude-url GLOB` (both repeatable). A pattern is matched against the path
-and query (`/admin/*`, `*?page=*`), or against the whole URL when it contains
-`://`. Logout links (`*/logout*`, `*/signout*` and similar) are never opened, so
-a scan does not end your session; `deny` in the config adds more. `--no-crawl`
-and `--per-pattern N` are for crawling, which comes with 0.7.0; until then only
-the URLs you pass are checked.
+`ramplint --runserver` starts `manage.py runserver` with a generated settings
+module that wraps your template loaders with `ramplint.django.SourceMapLoader`
+(your files are not changed). Every element then knows its template, line and
+column, so the text, GitHub and SARIF outputs show the template location and
+the same problem on 500 product pages is one finding. A problem the template
+linter also finds is reported once, marked *confirmed in the browser*.
+
+To scan a server you start yourself, add the loader to your **development**
+settings (it does nothing unless `DEBUG` is on):
+
+```python
+TEMPLATES[0]["APP_DIRS"] = False
+TEMPLATES[0]["OPTIONS"]["loaders"] = [
+    (
+        "ramplint.django.SourceMapLoader",
+        [
+            "django.template.loaders.filesystem.Loader",
+            "django.template.loaders.app_directories.Loader",
+        ],
+    )
+]
+```
+
+Jinja2 templates and markup added by JavaScript fall back to the URL and a CSS
+selector.
+
+### Pages behind a login
+
+```bash
+ramplint http://localhost:8000/accounts/login/ --save-auth auth/staff.json
+ramplint --runserver --auth auth/staff.json --auth auth/customer.json
+```
+
+`--save-auth` opens a browser window at the login page; log in by hand and close
+it, and the session (cookies, never a password) is saved. Each `--auth` file is
+a role: the site is scanned once per role and every problem says which roles saw
+it. Pages that redirect to `LOGIN_URL` are listed as **needs login**, and a
+saved session that expired is pointed out. Keep the files out of git; ramplint
+warns when they are not ignored.
+
+### The report
+
+`--format html -o a11y/` writes a folder that opens from disk, offline:
+
+```text
+a11y/
+  index.html      every problem, by template (or URL pattern), with a picture of each element
+  pages/          one page per URL and viewport: screenshot with numbered markers and the problems
+  site-map.html   URL patterns and what the crawl did with each (scanned, needs sample, needs login...)
+  api.html        XHR / fetch endpoints the pages called
+  screenshots/
+  scan.json       everything, for tools and --baseline
+```
+
+`-o report.html --embed-screenshots` writes a single file instead. Text, JSON,
+GitHub and SARIF outputs include the URL, selector, viewport, state, role and
+template of every problem.
+
+### Only new problems: baselines
+
+```bash
+ramplint --runserver --write-baseline a11y-baseline.json   # once, commit it
+ramplint --runserver --baseline a11y-baseline.json         # in CI
+```
+
+With a baseline every problem is *new*, *existing* or *fixed*; the run fails
+only on new ones, and the text output shows only those. Problems are matched by
+rule, template (or URL pattern), selector and message, not by line number, so
+unrelated edits do not turn old problems into new ones.
+
+### Options
+
+| Option | |
+|---|---|
+| `--runserver` | start the Django project in this folder, scan it, stop it |
+| `--viewport desktop,mobile` | `desktop`, `tablet`, `mobile` or `WIDTHxHEIGHT` |
+| `--max-pages N`, `--per-pattern N` | page budget (50) and pages per URL pattern (2) |
+| `--include GLOB`, `--exclude-url GLOB` | which URLs (path like `/shop/*`, or a full URL) |
+| `--no-crawl` | check only the given URLs |
+| `--max-states N` | menus and dialogs opened per page (10; 0 turns it off) |
+| `--concurrency N` | pages opened at the same time |
+| `--save-auth FILE`, `--auth FILE` | pages behind a login |
+| `--baseline FILE`, `--write-baseline FILE` | report only new problems |
+| `--embed-screenshots` | one HTML file with the pictures inside |
+| `--timeout S`, `--delay MS`, `--wait-for SELECTOR`, `--headed` | page loading |
+| `--save-snapshots DIR`, `--screenshot-format png` | debugging |
 
 The same settings go in `pyproject.toml`:
 
@@ -311,24 +400,19 @@ The same settings go in `pyproject.toml`:
 [tool.ramplint.browser]
 base-url = "http://localhost:8000/"   # used when you pass browser options but no URL
 viewports = ["desktop", "mobile"]
-timeout = 30
-delay = 0
-wait-for = "#app"
-screenshot-format = "jpeg"
-max-pages = 50
+max-pages = 100
 per-pattern = 2
-crawl = true
-include = ["/shop/*"]
+max-states = 10
+concurrency = 2
 exclude = ["/admin/*"]
-deny = ["*/reset/*"]
+deny = ["*/reset/*", "shop:checkout"]
+auth = ["auth/staff.json"]
+
+[tool.ramplint.browser.samples]
+"catalog:detail" = ["/products/1/", "/products/2/"]
 ```
 
-With `base-url` set, `ramplint --viewport mobile` (or any other browser option)
-checks that site; plain `ramplint` still checks your templates. Ctrl+C stops a
-scan, closes the browser and exits with 130.
-
-Crawling a whole site, template source maps, rendered-page rules (contrast,
-focus, target size) and a report with screenshots are coming in 0.7.0.
+Ctrl+C stops a scan, closes the browser and exits with 130.
 
 ## Rules
 
@@ -373,6 +457,17 @@ focus, target size) and a report with screenshots are coming in 0.7.0.
 | [`RL703`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL703.md) | `aria-valid-attr-value` | ARIA values match their type (`aria-hidden="yes"`, missing `aria-labelledby` ids) | 4.1.2 (A) |
 | [`RL704`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL704.md) | `aria-required-attr` | Roles have their required states (`role="switch"` needs `aria-checked`) | 4.1.2 (A) |
 | [`RL705`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL705.md) | `aria-hidden-focus` | Nothing focusable inside `aria-hidden="true"` | 4.1.2 (A) |
+| [`RL801`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL801.md) | `color-contrast` | Text contrast is at least 4.5:1 (3:1 for large text) (browser scan) | 1.4.3 (AA) |
+| [`RL802`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL802.md) | `target-size` | Clickable targets are 24x24 px or have room around them (browser scan) | 2.5.8 (AA) |
+| [`RL803`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL803.md) | `reflow` | Pages do not scroll sideways at 320 px (browser scan) | 1.4.10 (AA) |
+| [`RL804`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL804.md) | `focus-visible` | Keyboard focus is visible (browser scan) | 2.4.7 (AA) |
+| [`RL805`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL805.md) | `focus-obscured` | Focused elements are not hidden behind sticky or fixed content (browser scan) | 2.4.11 (AA) |
+| [`RL806`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL806.md) | `dialog-focus` | Modal dialogs take and keep focus; no keyboard traps (browser scan) | 2.4.3 (A) |
+| [`RL807`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL807.md) | `expanded-state` | `aria-expanded` becomes `"true"` when content opens (browser scan) | 4.1.2 (A) |
+| [`RL901`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL901.md) | `page-title-unique` | Different pages have different titles (browser scan) | 2.4.2 (A) |
+| [`RL902`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL902.md) | `consistent-navigation` | Repeated navigation keeps its order (browser scan) | 3.2.3 (AA) |
+| [`RL903`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL903.md) | `consistent-identification` | The same control has the same name on every page (browser scan) | 3.2.4 (AA) |
+| [`RL904`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL904.md) | `bypass-blocks` | Repeated navigation can be skipped (browser scan) | 2.4.1 (A) |
 
 Every rule has its own page with examples and the reasoning behind it: see
 [docs/rules](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/README.md),
@@ -774,7 +869,7 @@ line, `--settings MODULE` and `--no-django` do the same.
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/iLLcruS/ramplint
-    rev: 0.6.0
+    rev: 0.7.0
     hooks:
       - id: ramplint
 ```
@@ -787,6 +882,30 @@ problems appear as annotations right in the pull request diff.
 ```yaml
 - run: pip install ramplint
 - run: ramplint templates/
+```
+
+### Browser scan in CI
+
+```yaml
+jobs:
+  accessibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt "ramplint[browser]"
+      - run: python -m playwright install --with-deps chromium
+      # Annotations land on template lines; only problems not in the baseline fail.
+      - run: ramplint --runserver --baseline a11y-baseline.json
+      - run: ramplint --runserver --format html -o a11y/
+        if: always()
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accessibility-report
+          path: a11y/
 ```
 
 ### GitHub Code Scanning
@@ -832,16 +951,18 @@ for problem in lint_source('<img src="a.png">', rules=select_rules(["RL1"])):
 
 ## Limitations
 
-ramplint is a static checker. It catches structural problems early and cheaply,
-but it cannot judge colour contrast or focus order, or tell whether an `alt`
-text is actually meaningful. Use it together with manual testing and a runtime
-tool such as axe.
+The template linter catches structural problems early and cheaply; the browser
+scan adds what only a rendered page shows (contrast, focus, target size,
+reflow). Neither can tell whether an `alt` text is actually meaningful or a
+page makes sense with a screen reader, so use ramplint together with manual
+testing.
 
 ## Roadmap
 
 - [x] 36 rules for images, tables, structure, forms, controls, the document and WAI-ARIA
 - [x] HTML report and SARIF output for GitHub Code Scanning
 - [x] Find Django template folders from the settings; follow `{% extends %}` / `{% include %}`
+- [x] Browser scan: crawl a Django project, menus and dialogs, rendered-page and site-wide rules, template source maps, report with screenshots, baselines
 - [ ] `--fix` for safe autofixes (e.g. `scope="col"` on header rows)
 - [ ] Check partials against the templates that include them (a `<label>` in the page, the field in the partial)
 - [ ] Jinja2 macros

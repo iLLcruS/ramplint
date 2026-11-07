@@ -41,3 +41,14 @@
 | [RL703](RL703.md) | `aria-valid-attr-value` | ARIA attribute values must match the attribute's type. |
 | [RL704](RL704.md) | `aria-required-attr` | Elements with a role must have the ARIA attributes that role requires. |
 | [RL705](RL705.md) | `aria-hidden-focus` | Content with aria-hidden="true" must not be focusable. |
+| [RL801](RL801.md) | `color-contrast` | Text must have a contrast of at least 4.5:1 (3:1 for large text). |
+| [RL802](RL802.md) | `target-size` | Clickable targets must be at least 24 by 24 CSS pixels, or have room around them. |
+| [RL803](RL803.md) | `reflow` | Content must fit a 320 CSS pixel wide screen without scrolling sideways. |
+| [RL804](RL804.md) | `focus-visible` | Keyboard focus must be visible. |
+| [RL805](RL805.md) | `focus-obscured` | A focused element must not be hidden behind sticky or fixed content. |
+| [RL806](RL806.md) | `dialog-focus` | Modal dialogs must take focus and keep it; Tab must never get stuck. |
+| [RL807](RL807.md) | `expanded-state` | A control that opens content must set aria-expanded="true" when it does. |
+| [RL901](RL901.md) | `page-title-unique` | Different pages must have different titles. |
+| [RL902](RL902.md) | `consistent-navigation` | Navigation repeated on several pages must keep its links in the same order. |
+| [RL903](RL903.md) | `consistent-identification` | Controls that do the same thing on different pages must have the same name. |
+| [RL904](RL904.md) | `bypass-blocks` | Pages with repeated navigation must offer a way to skip it. |

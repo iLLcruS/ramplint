@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -366,7 +367,7 @@ MERGED = Violation(
     url="http://x/products/1/",
     selector="#logo",
     viewport="desktop",
-    template="catalog/product.html:4",
+    template="catalog/product.html:4:7",
     pages=("http://x/products/1/", "http://x/products/2/", "http://x/products/3/"),
 )
 ONE_PAGE = Violation(
@@ -384,17 +385,24 @@ def render_merged(fmt: str) -> str:
 def test_problem_on_several_pages():
     text = render_merged("text")
     assert (
+        "catalog/product.html:4:7: RL101 <img> is missing an alt [img-alt] "
+        "(on http://x/products/1/ #logo and 2 more pages)"
+    ) in text
+    out = io.StringIO()
+    with browser_report(["desktop"]):
+        REPORTERS["text"].write([replace(MERGED, template=None)], 5, out, False)
+    assert (
         "http://x/products/1/ #logo: RL101 <img> is missing an alt [img-alt] (and 2 more pages)"
-        in text
-    )
+    ) in out.getvalue()
     assert "[html-lang]\n" in text  # nothing added for one page
     assert "Found 2 problems in 4 of 5 pages." in text
     github = render_merged("github")
-    assert "is missing an alt (and 2 more pages)" in github
+    assert github.startswith("::error file=catalog/product.html,line=4,col=7,title=RL101 img-alt::")
+    assert "(on http://x/products/1/ #logo and 2 more pages)" in github
     data = json.loads(render_merged("json"))
     assert data["violations"][0]["pages"][2] == "http://x/products/3/"
     properties = json.loads(render_merged("sarif"))["runs"][0]["results"][0]["properties"]
-    assert len(properties["pages"]) == 3 and properties["template"] == "catalog/product.html:4"
+    assert len(properties["pages"]) == 3 and properties["template"] == "catalog/product.html:4:7"
     html = render_merged("html")
     assert 'Also on: <a href="http://x/products/2/">http://x/products/2/</a>, ' in html
     assert "<dt>Pages with problems</dt><dd>4</dd>" in html

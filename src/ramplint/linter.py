@@ -24,7 +24,19 @@ DEFAULT_EXCLUDE_DIRS = frozenset(
 
 
 #: Fields only set for problems found in a rendered page (browser mode).
-BROWSER_FIELDS = ("url", "selector", "viewport", "bbox", "screenshot", "template", "pages")
+BROWSER_FIELDS = (
+    "url",
+    "selector",
+    "viewport",
+    "bbox",
+    "screenshot",
+    "template",
+    "pages",
+    "state",
+    "role",
+    "confirmed",
+    "baseline",
+)
 
 
 @dataclass(frozen=True, order=True)
@@ -51,10 +63,25 @@ class Violation:
     template: str | None = field(default=None, compare=False)
     #: Every URL where the same problem was seen; ``path`` is the first of them.
     pages: tuple[str, ...] | None = field(default=None, compare=False)
+    #: The opened menu or dialog the problem is in (``after clicking "Menu" ...``).
+    state: str | None = field(default=None, compare=False)
+    #: The login role that saw the problem (``--auth admin.json``).
+    role: str | None = field(default=None, compare=False)
+    #: Found by the template linter and seen again in the browser (``--runserver``).
+    confirmed: bool | None = field(default=None, compare=False)
+    #: ``new`` or ``existing`` when compared with a ``--baseline``.
+    baseline: str | None = field(default=None, compare=False)
 
     @property
     def in_browser(self) -> bool:
         return self.url is not None
+
+    @property
+    def template_location(self) -> tuple[str, int, int] | None:
+        """``(path, line, col)`` of the template that produced the element, if known."""
+        from ramplint.sourcemap import parse_location
+
+        return parse_location(self.template)
 
     @property
     def locations(self) -> tuple[str, ...]:

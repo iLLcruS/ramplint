@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>States</title>
+<style>[hidden] { display: none !important; }</style></head>
+<body>
+<nav aria-label="Main">
+  <button id="menu-toggle" aria-expanded="false" aria-controls="menu">Menu</button>
+  <ul id="menu" hidden>
+    <li><a href="#shop">Shop</a></li>
+    <li><a href="#cart"><img src="cart.png" id="menu-img"></a></li>
+  </ul>
+</nav>
+<main>
+  <h1>States</h1>
+  <button id="open-dialog" aria-haspopup="dialog">Delete account</button>
+  <dialog id="confirm" aria-labelledby="confirm-title">
+    <h2 id="confirm-title">Delete your account?</h2>
+    <form method="post" action="/delete-account/"><button id="really">Delete</button></form>
+    <button id="cancel">Cancel</button>
+  </dialog>
+  <button id="broken-toggle" aria-expanded="false" aria-controls="more">More</button>
+  <div id="more" hidden><p>More details.</p></div>
+  <button id="fake-dialog-open" aria-haspopup="dialog">Help</button>
+  <div id="help" role="dialog" aria-modal="true" aria-label="Help" hidden>
+    <p>Help text.</p><button>Close help</button>
+  </div>
+  <button id="sender" aria-expanded="false" aria-controls="sent">Save</button>
+  <div id="sent" hidden>Saved.</div>
+  <details id="faq"><summary>Shipping</summary><p>Ships in <a href="#days"></a> days.</p></details>
+  <a href="/elsewhere/" id="leave" aria-haspopup="true">Leave the page</a>
+</main>
+<script>
+  const toggle = (button, panel) => {
+    const open = panel.hidden;
+    panel.hidden = !open;
+    return open;
+  };
+  document.getElementById("menu-toggle").addEventListener("click", (event) => {
+    const open = toggle(event.currentTarget, document.getElementById("menu"));
+    event.currentTarget.setAttribute("aria-expanded", String(open));
+  });
+  document.getElementById("open-dialog").addEventListener("click", () => {
+    document.getElementById("confirm").showModal();
+  });
+  // Forgets aria-expanded: RL807.
+  document.getElementById("broken-toggle").addEventListener("click", () => {
+    toggle(null, document.getElementById("more"));
+  });
+  // Shows a "modal" without moving focus: RL806.
+  document.getElementById("fake-dialog-open").addEventListener("click", () => {
+    document.getElementById("help").hidden = false;
+  });
+  // Sends data when clicked: must be blocked.
+  document.getElementById("sender").addEventListener("click", (event) => {
+    fetch("/api/save/", { method: "POST", body: "x" });
+    event.currentTarget.setAttribute("aria-expanded", "true");
+    document.getElementById("sent").hidden = false;
+  });
+</script>
+</body></html>

@@ -9,6 +9,11 @@ class StarRatingWidget(forms.Widget):
     template_name = "widgets/star_rating.html"
 
 
+class LoginForm(forms.Form):
+    username = forms.CharField(label=_("Name"))
+    password = forms.CharField(label=_("Password"), widget=forms.PasswordInput, required=False)
+
+
 class NewsletterForm(forms.Form):
     # An empty label with a placeholder: screen readers announce an input without a name.
     email = forms.EmailField(

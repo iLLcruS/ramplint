@@ -5,9 +5,10 @@ Needs the optional ``browser`` extra::
     pip install "ramplint[browser]"
     playwright install chromium
 
-Everything that talks to the browser lives in :mod:`ramplint.browser.session`;
-the checks work on :class:`~ramplint.browser.snapshot.PageSnapshot` objects, so
-they can be tested (and reports regenerated) without a browser.
+Only :mod:`ramplint.browser.session` and :mod:`ramplint.browser.probes` talk to
+the browser; crawling, checks and reports work on
+:class:`~ramplint.browser.snapshot.PageSnapshot` objects, so they can be tested
+(and reports regenerated) without one.
 """
 
 from __future__ import annotations

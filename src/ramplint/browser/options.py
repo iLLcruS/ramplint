@@ -63,9 +63,18 @@ def url_matches(url: str, patterns: Sequence[str]) -> bool:
     return False
 
 
-#: URLs that are never opened: visiting them ends the session. ``deny`` in the
-#: configuration adds to these.
-DEFAULT_DENY = ("*/logout*", "*/log-out*", "*/signout*", "*/sign-out*")
+#: URLs that are never opened: visiting them ends the session or changes data,
+#: and the admin is not the site's audience. ``deny`` in the configuration adds
+#: to these.
+DEFAULT_DENY = (
+    "*/logout*",
+    "*/log-out*",
+    "*/signout*",
+    "*/sign-out*",
+    "*/delete*",
+    "*/remove*",
+    "/admin/*",
+)
 
 
 @dataclass
@@ -90,12 +99,22 @@ class BrowserOptions:
     per_pattern: int = 2
     #: Follow links from the given pages. ``False`` checks only the given URLs.
     crawl: bool = True
+    #: Pages opened at the same time, each worker with its own browser.
+    concurrency: int = 1
+    #: Menus, dialogs, tabs and ``<details>`` opened and checked per page.
+    max_states: int = 10
+    #: Saved logins (``--auth``), one scan per file.
+    auth: list[str] = field(default_factory=list)
+    #: The saved login of the current scan (Playwright storage state file).
+    storage_state: str | None = None
     #: Only URLs matching one of these globs are checked (empty: all).
     include: list[str] = field(default_factory=list)
     #: URLs matching one of these globs are not checked.
     exclude: list[str] = field(default_factory=list)
     #: URLs that are never opened, not even when given on the command line.
     deny: list[str] = field(default_factory=lambda: list(DEFAULT_DENY))
+    #: Example paths for URL patterns with parameters, by pattern name.
+    samples: dict[str, list[str]] = field(default_factory=dict)
 
     def denied(self, url: str) -> bool:
         return url_matches(url, self.deny)

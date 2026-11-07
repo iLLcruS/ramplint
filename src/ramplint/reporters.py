@@ -18,7 +18,7 @@ from collections import Counter
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TextIO
 
 from ramplint.linter import Violation
@@ -59,6 +59,12 @@ class ReportContext:
     noun: str = "template"
     #: Viewports of a browser scan; shown per problem when there are several.
     viewports: tuple[str, ...] = ()
+    #: Browser report folder: page URL -> link to its page report, and the
+    #: other pages of the folder (``(label, href)``) for the navigation.
+    page_links: dict[str, str] = field(default_factory=dict, compare=False, hash=False)
+    nav: tuple[tuple[str, str], ...] = ()
+    #: ``--baseline``: problems of the baseline that are gone (``scan.json`` entries).
+    fixed: tuple[dict[str, object], ...] = field(default=(), compare=False, hash=False)
 
     @property
     def browser(self) -> bool:
@@ -74,9 +80,21 @@ def report_context() -> ReportContext:
 
 
 @contextmanager
-def browser_report(viewports: Sequence[str]) -> Iterator[ReportContext]:
+def browser_report(
+    viewports: Sequence[str],
+    page_links: dict[str, str] | None = None,
+    nav: Sequence[tuple[str, str]] = (),
+    fixed: Sequence[dict[str, object]] = (),
+) -> Iterator[ReportContext]:
     """Reports written inside this block describe pages of a browser scan."""
-    context = ReportContext(unit="page", noun="page", viewports=tuple(viewports))
+    context = ReportContext(
+        unit="page",
+        noun="page",
+        viewports=tuple(viewports),
+        page_links=dict(page_links or {}),
+        nav=tuple(nav),
+        fixed=tuple(fixed),
+    )
     token = _CONTEXT.set(context)
     try:
         yield context
@@ -85,11 +103,27 @@ def browser_report(viewports: Sequence[str]) -> Iterator[ReportContext]:
 
 
 def browser_location(v: Violation) -> str:
-    """``URL selector`` plus the viewports when the scan used several."""
+    """``URL selector`` plus the viewports when the scan used several, and the state."""
     location = f"{v.path} {v.selector}" if v.selector else v.path
     if v.viewport and len(report_context().viewports) > 1:
         location += f" @{v.viewport}"
+    if v.state:
+        location += f" ({v.state})"
+    if v.role:
+        location += f" [as {v.role}]"
     return location
+
+
+def where_seen(v: Violation) -> str:
+    """What follows a finding: other pages, or for findings shown at their template
+    `` (on http://x/ #sel and 2 more pages, confirmed in the browser)``."""
+    if not v.template:
+        return other_pages(v)
+    more = len(v.locations) - 1
+    seen = f" (on {browser_location(v)}"
+    if more > 0:
+        seen += f" and {more} more {'page' if more == 1 else 'pages'}"
+    return seen + (", confirmed in the browser)" if v.confirmed else ")")
 
 
 def other_pages(v: Violation) -> str:
@@ -101,8 +135,11 @@ def other_pages(v: Violation) -> str:
 
 
 def affected_count(violations: Sequence[Violation]) -> int:
-    """How many files or pages have at least one problem."""
-    return len({location for v in violations for location in v.locations})
+    """How many files (or, in a browser scan, pages) have at least one problem."""
+    browser = report_context().browser
+    return len(
+        {location for v in violations if v.in_browser or not browser for location in v.locations}
+    )
 
 
 def available_formats() -> list[str]:
@@ -187,11 +224,16 @@ def report_text(
     violations: Sequence[Violation], files_checked: int, out: TextIO, color: bool = False
 ) -> None:
     for v in violations:
-        where = browser_location(v) if v.in_browser else f"{v.path}:{v.line}:{v.col}"
+        if v.template:
+            where = v.template
+        elif v.in_browser:
+            where = browser_location(v)
+        else:
+            where = f"{v.path}:{v.line}:{v.col}"
         location = _paint(f"{where}:", _BOLD, color=color)
         code = _paint(v.code, _RED, _BOLD, color=color)
         name = _paint(f"[{v.name}]", _DIM, color=color)
-        out.write(f"{location} {code} {v.message} {name}{other_pages(v)}\n")
+        out.write(f"{location} {code} {v.message} {name}{where_seen(v)}\n")
 
     summary = summary_line(violations, files_checked)
     if violations:
@@ -228,6 +270,13 @@ def report_github(
 ) -> None:
     for v in violations:
         title = _escape_github(f"{v.code} {v.name}", property_value=True)
+        location = v.template_location
+        if location is not None:
+            path, line, col = location
+            file = _escape_github(path, property_value=True)
+            message = _escape_github(f"{v.message}{where_seen(v)}")
+            out.write(f"::error file={file},line={line},col={col},title={title}::{message}\n")
+            continue
         if v.in_browser:
             # No file to attach the annotation to; it shows in the run summary.
             message = _escape_github(f"{browser_location(v)}: {v.message}{other_pages(v)}")

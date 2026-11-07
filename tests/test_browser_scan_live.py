@@ -21,7 +21,9 @@ DESKTOP = parse_viewport("desktop")
 
 
 def test_scan_merges_viewports(site_url):
-    options = BrowserOptions(timeout=10, viewports=[DESKTOP, parse_viewport("mobile")], delay=1)
+    options = BrowserOptions(
+        timeout=10, viewports=[DESKTOP, parse_viewport("mobile")], delay=1, crawl=False
+    )
     seen = []
     result = scan(
         [f"{site_url}/basic/index.html", f"{site_url}/basic/clean.html"],
@@ -39,7 +41,8 @@ def test_scan_merges_viewports(site_url):
 
 def test_cli_end_to_end(site_url, tmp_path, capsys):
     snapshots = tmp_path / "snapshots"
-    code = main([f"{site_url}/basic/index.html", "--no-color", "--save-snapshots", str(snapshots)])
+    args = [f"{site_url}/basic/index.html", "--no-crawl", "--no-color", "--select", "RL1,RL5"]
+    code = main([*args, "--save-snapshots", str(snapshots)])
     assert code == EXIT_VIOLATIONS
     out = capsys.readouterr().out
     assert "#emptied-by-js: RL501" in out
@@ -89,3 +92,21 @@ def test_chromium_fails_to_start(monkeypatch):
     monkeypatch.setattr(playwright.sync_api, "sync_playwright", lambda: FakePlaywright())
     with pytest.raises(BrowserUnavailable, match="^Host system is missing dependencies$"):
         BrowserSession(BrowserOptions()).__enter__()
+
+
+def test_crawl_finds_pages_fragments_and_api_calls(site_url, site_requests):
+    from ramplint.browser.frontier import Status
+
+    options = BrowserOptions(timeout=10)
+    result = scan([f"{site_url}/crawl/"], select_rules(), options)
+    urls = {s.url for s in result.snapshots}
+    assert urls == {f"{site_url}/crawl/", f"{site_url}/crawl/about/"}
+    assert not any("logout" in path for path in site_requests)
+    coverage = {c.route: c.status for c in result.coverage}
+    assert coverage["/crawl/logout/"] == Status.DENIED
+    api = next(e for e in result.endpoints if e.pattern == "/crawl/api/items.json")
+    assert api.method == "GET" and api.statuses == {200}
+    assert api.content_types == {"application/json"}
+    assert result.fragments == [f"{site_url}/crawl/fragments/promo.html"]
+    promo = [v for v in result.violations if v.url.endswith("promo.html")]
+    assert [v.code for v in promo] == ["RL101"]

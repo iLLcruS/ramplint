@@ -29,9 +29,20 @@ def lint():
 SITES = Path(__file__).parent / "sites"
 
 
+#: Paths the test web server was asked for, in order.
+SITE_REQUESTS: list[str] = []
+
+
 class _QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):  # noqa: A002 - signature from the base class
-        pass
+        SITE_REQUESTS.append(self.path)
+
+
+@pytest.fixture
+def site_requests() -> list[str]:
+    """Paths requested from :func:`site_url` during the test."""
+    SITE_REQUESTS.clear()
+    return SITE_REQUESTS
 
 
 @pytest.fixture(scope="session")

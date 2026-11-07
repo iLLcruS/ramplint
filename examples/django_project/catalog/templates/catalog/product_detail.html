@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ product.name }} | Shoply{% endblock %}
+{% block heading %}{{ product.name }}{% endblock %}
+
+{% block content %}
+<p>{% blocktrans with price=product.price %}Price: {{ price }} EUR{% endblocktrans %}</p>
+<a href="{% url 'catalog:list' %}">{% trans "Back to all products" %}</a>
+{% endblock %}

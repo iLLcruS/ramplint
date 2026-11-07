@@ -9,6 +9,7 @@ from typing import TextIO
 
 from ramplint.project.discovery import Project
 from ramplint.project.templates import TemplateIndex
+from ramplint.project.urls import UrlConf
 from ramplint.project.workspace import Workspace
 
 
@@ -160,3 +161,37 @@ def print_verbose(workspace: Workspace, files: list[Path], err: TextIO) -> None:
     if not projects:
         err.write("ramplint: no Django project found, linting every template under the paths\n")
     err.write(f"ramplint: {_files_summary(files)} to lint\n")
+
+
+def describe_urls(
+    workspace: Workspace, project: Project, conf: UrlConf, output_format: str, out: TextIO
+) -> None:
+    """``--list-urls``: the URL patterns of a project's URLconf."""
+    if output_format == "json":
+        data = {
+            "root": _display_root(workspace, project),
+            "settings_module": project.settings_module,
+            "urlconf": conf.module,
+            "patterns": [pattern.to_dict() for pattern in conf.patterns],
+            "unresolved": conf.unresolved,
+        }
+        json.dump(data, out, indent=2)
+        out.write("\n")
+        return
+    out.write(f"Project   {_display_root(workspace, project)}\n")
+    out.write(f"URLconf   {conf.module} (ROOT_URLCONF in {project.settings_module})\n")
+    if conf.patterns:
+        out.write("URL patterns:\n")
+        rows = [(p.route, p.name or "-", f"{p.source}:{p.line}") for p in conf.patterns]
+        route_width = max(len(route) for route, _, _ in rows)
+        name_width = max(len(name) for _, name, _ in rows)
+        for route, name, source in rows:
+            out.write(f"  {route:<{route_width}}  {name:<{name_width}}  {source}\n")
+    else:
+        out.write("No URL patterns found.\n")
+    if conf.unresolved:
+        out.write("Not read (ramplint never imports the project):\n")
+        for problem in conf.unresolved:
+            out.write(f"  {problem}\n")
+    static = len(conf.start_paths)
+    out.write(f"\n{_plural(len(conf.patterns), 'URL pattern')}, {static} without parameters.\n")

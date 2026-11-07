@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Focus</title>
+<style>
+  body { margin: 0; font: 16px sans-serif; }
+  button { font: inherit; }
+  #invisible:focus, #invisible:focus-visible { outline: none; }
+  #styled:focus-visible { outline: none; box-shadow: 0 0 0 3px #1a73e8; }
+  #banner { position: fixed; bottom: 0; left: 0; right: 0; height: 120px; background: #333; color: #fff; }
+  #hidden-link { position: absolute; top: 720px; left: 20px; }
+</style></head>
+<body><main>
+  <h1>Focus</h1>
+  <button id="plain">Default outline</button>
+  <button id="invisible">No outline</button>
+  <button id="styled">Custom ring</button>
+  <a id="hidden-link" href="#x">Behind the banner</a>
+  <div id="banner"><p>We use cookies.</p></div>
+</main></body></html>

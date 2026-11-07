@@ -4,6 +4,7 @@
   if (!form) return;
   var rule = document.getElementById("filter-rule");
   var file = document.getElementById("filter-file");
+  var baseline = document.getElementById("filter-baseline");
   var status = document.getElementById("filter-status");
   var total = Number(status.getAttribute("data-total"));
   form.hidden = false;
@@ -14,7 +15,10 @@
       var fileMatches = !file.value || section.id === file.value;
       var visible = 0;
       section.querySelectorAll("tr[data-rule]").forEach(function (row) {
-        var match = fileMatches && (!rule.value || row.getAttribute("data-rule") === rule.value);
+        var match =
+          fileMatches &&
+          (!rule.value || row.getAttribute("data-rule") === rule.value) &&
+          (!baseline || !baseline.value || row.getAttribute("data-baseline") === baseline.value);
         row.hidden = !match;
         if (match) visible += 1;
       });
@@ -32,6 +36,7 @@
 
   rule.addEventListener("change", apply);
   file.addEventListener("change", apply);
+  if (baseline) baseline.addEventListener("change", apply);
   form.addEventListener("reset", function () {
     setTimeout(apply, 0);
   });

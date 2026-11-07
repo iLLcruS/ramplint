@@ -46,6 +46,8 @@ class Project:
     #: True when the folders come from TEMPLATES in the settings.
     from_settings: bool = False
     warnings: list[str] = field(default_factory=list)
+    #: The settings that were read (``ROOT_URLCONF``, ``LOGIN_URL``...).
+    settings: Settings | None = field(default=None, compare=False, repr=False)
 
     def relative(self, path: Path) -> str:
         try:
@@ -64,7 +66,8 @@ def find_project_root(path: Path) -> Path | None:
     return None
 
 
-def _module_roots(root: Path) -> list[Path]:
+def module_roots(root: Path) -> list[Path]:
+    """Folders Python modules of the project are imported from."""
     roots = [root]
     if (root / "src").is_dir():
         roots.append(root / "src")
@@ -89,7 +92,7 @@ def _entry_points(root: Path) -> Iterator[tuple[str, Path]]:
 
 
 def _guess_settings(root: Path) -> str | None:
-    for module_root in _module_roots(root):
+    for module_root in module_roots(root):
         if (module_root / "settings.py").is_file() or (module_root / "settings").is_dir():
             return "settings"
         for child in sorted(module_root.iterdir()):
@@ -150,7 +153,7 @@ def _app_folder(app: str, roots: list[Path]) -> Path | None:
 class _Discovery:
     def __init__(self, root: Path) -> None:
         self.root = root
-        self.roots = _module_roots(root)
+        self.roots = module_roots(root)
         self.warnings: list[str] = []
         self.dirs: list[TemplateDir] = []
         #: Some TEMPLATES entries could not be read statically.
@@ -274,6 +277,7 @@ def discover_project(
                     module, settings = f"{module}.{name}", fallback
                     break
         project.settings_module, project.settings_source = module, source
+        project.settings = settings
         if settings is not None and discovery.from_settings(settings):
             project.from_settings = True
         break
