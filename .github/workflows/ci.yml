@@ -25,7 +25,9 @@ jobs:
       - run: ruff format --check .
 
   test:
+    # Everything but the browser: fast, on every Python and OS.
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -41,13 +43,87 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e ".[dev,browser]"
-      # The browser tests run against a real Chromium.
-      - run: python -m playwright install --with-deps chromium
-      # Fails below the coverage threshold set in pyproject.toml.
-      - run: pytest --cov --cov-report=term-missing
+      - run: pip install -e ".[dev]"
+      # Browser tests skip themselves here; the browser job runs them. The
+      # coverage threshold applies to both together (see the coverage job).
+      - run: pytest -m "not browser" --cov --cov-report= --cov-fail-under=0
+        env:
+          COVERAGE_FILE: .coverage.test-${{ matrix.os }}-${{ matrix.python-version }}
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        with:
+          name: coverage-test
+          path: .coverage.test-*
+          include-hidden-files: true
       - name: Smoke test the CLI
         run: ramplint examples --exit-zero
+
+  browser:
+    # The browser scan against a real Chromium, the demo Django project and
+    # the fixture sites. One job: installing Chromium is the slow part.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: pip install -e ".[dev,browser]"
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(python -c 'import importlib.metadata as m; print(m.version("playwright"))')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: chromium
+        with:
+          path: ~/.cache/ms-playwright
+          key: chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Install Chromium
+        if: steps.chromium.outputs.cache-hit != 'true'
+        run: python -m playwright install --with-deps chromium
+      - name: Install Chromium's system libraries
+        if: steps.chromium.outputs.cache-hit == 'true'
+        run: python -m playwright install-deps chromium
+      - run: pytest -m browser --cov --cov-report= --cov-fail-under=0
+        env:
+          COVERAGE_FILE: .coverage.browser
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-browser
+          path: .coverage.browser
+          include-hidden-files: true
+      - name: Scan the demo project
+        working-directory: examples/django_project
+        run: |
+          set +e
+          ramplint --runserver --format html -o "$RUNNER_TEMP/a11y/" --max-states 3
+          code=$?
+          set -e
+          # The demo has problems on purpose: 1 is expected, anything else is not.
+          test "$code" -eq 1
+          ramplint "$RUNNER_TEMP/a11y/index.html" "$RUNNER_TEMP"/a11y/pages/*.html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-report
+          path: ${{ runner.temp }}/a11y
+          if-no-files-found: ignore
+
+  coverage:
+    needs: [test, browser]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: pip install "coverage[toml]>=7"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+      - run: coverage combine
+      # Fails below the threshold set in pyproject.toml.
+      - run: coverage report
 
   package:
     # Build exactly what would be published and use it like a user would.
@@ -67,7 +143,8 @@ jobs:
       - name: Install the wheel in a clean environment
         run: |
           python -m venv /tmp/venv
-          /tmp/venv/bin/pip install dist/*.whl
+          /tmp/venv/bin/pip install "$(ls dist/*.whl)[browser]"
+          /tmp/venv/bin/python -m playwright install --with-deps chromium
       - name: Use the installed package
         working-directory: /tmp
         run: |
@@ -88,6 +165,17 @@ jobs:
             echo "::error::ramplint found no problems in the demo templates"
             exit 1
           fi
+      - name: Scan a page with the installed wheel
+        working-directory: /tmp
+        run: |
+          set -euo pipefail
+          python -m http.server 8765 --directory "$GITHUB_WORKSPACE/tests/sites" &
+          sleep 1
+          if /tmp/venv/bin/ramplint http://127.0.0.1:8765/basic/index.html --no-crawl; then
+            echo "::error::the browser scan found no problems in the fixture page"
+            exit 1
+          fi
+          /tmp/venv/bin/ramplint http://127.0.0.1:8765/basic/clean.html --no-crawl
 
   pre-commit-hook:
     runs-on: ubuntu-latest
