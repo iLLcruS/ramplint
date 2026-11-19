@@ -7,7 +7,7 @@ from ramplint.dom import Node
 from ramplint.rules.aria import effective_role
 from ramplint.rules.base import rule
 from ramplint.rules.ids import rendered_elements
-from ramplint.rules.names import has_accessible_name, has_naming_attribute
+from ramplint.rules.names import has_accessible_name, has_naming_attribute, static_text
 from ramplint.template import mutually_exclusive
 
 
@@ -285,3 +285,65 @@ _NATIVE_HINT = {
     "searchbox": '<input type="search">',
     "combobox": "<select>",
 }
+
+
+#: Roles whose name may come from their content (label-in-name applies).
+_NAME_FROM_CONTENT_ROLES = frozenset(
+    {
+        "button", "link", "menuitem", "menuitemcheckbox", "menuitemradio", "tab",
+        "checkbox", "radio", "switch", "option", "treeitem",
+    }
+)  # fmt: skip
+_LABEL_SPACE_RE = re.compile(r"\s+")
+_WORD_RE = re.compile(r"\w")
+
+
+def _visible_label(node: Node) -> str | None:
+    """Text shown on the control; None when it is unknown until runtime."""
+    if node.tag == "input":
+        return None if node.is_dynamic("value") else node.get("value") or ""
+    return static_text(node)
+
+
+def _squash(text: str) -> str:
+    return _LABEL_SPACE_RE.sub(" ", text).strip().casefold()
+
+
+@rule(
+    code="RL508",
+    name="label-in-name",
+    summary="An aria-label must contain the text shown on the control.",
+    wcag="2.5.3 Label in Name (A)",
+)
+def label_in_name(root: Node) -> Iterator[tuple[Node, str]]:
+    for node in root.iter():
+        label = node.get("aria-label")
+        if not label or not label.strip() or node.dynamic_attrs:
+            continue
+        if node.is_dynamic("aria-label"):
+            continue
+        if node.tag == "input":
+            kind = (node.get("type") or "").strip().lower()
+            if kind not in ("submit", "button", "reset"):
+                continue
+        elif not (
+            (node.tag == "a" and node.get("href") is not None)
+            or node.tag == "button"
+            or effective_role(node) in _NAME_FROM_CONTENT_ROLES
+        ):
+            continue
+        visible = _visible_label(node)
+        if visible is None:
+            continue
+        shown = _squash(visible)
+        # Symbols and single characters ("×", "X", "→") are not a label to speak.
+        if len(shown) < 2 or not _WORD_RE.search(shown):
+            continue
+        if shown in _squash(label):
+            continue
+        yield (
+            node,
+            f'aria-label="{label.strip()}" does not contain the visible text "{visible.strip()}"; '
+            "voice control users say what they see, so start the aria-label with it "
+            "or remove the aria-label",
+        )

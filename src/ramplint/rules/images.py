@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 
 from ramplint.dom import Node
 from ramplint.rules.aria import effective_role
 from ramplint.rules.base import rule
-from ramplint.rules.names import has_naming_attribute
+from ramplint.rules.names import has_naming_attribute, static_text
 from ramplint.template import may_render_markup
 
 
@@ -69,3 +70,70 @@ def svg_img_alt(root: Node) -> Iterator[tuple[Node, str]]:
             '<svg role="img"> has no accessible name; add a <title> as its first child or '
             'an aria-label, or use aria-hidden="true" for a decorative icon',
         )
+
+
+_FILE_NAME_RE = re.compile(
+    r"^[\w\-. ]*\.(?:png|jpe?g|gif|svg|webp|avif|bmp|ico|tiff?)$", re.IGNORECASE
+)
+_PLACEHOLDER_WORDS = frozenset(
+    {"image", "img", "picture", "photo", "photograph", "graphic", "icon", "spacer", "alt"}
+)
+_REDUNDANT_PREFIX_RE = re.compile(
+    r"^(?:an?\s+|the\s+)?(?:image|picture|photo|photograph|graphic)\s+(?:of|showing)\b",
+    re.IGNORECASE,
+)
+_SPACE_RE = re.compile(r"\s+")
+#: Elements (or roles) whose name comes from their text, images included.
+_CONTAINERS = ("a", "button", "link")
+
+
+def _normalized(text: str) -> str:
+    return _SPACE_RE.sub(" ", text).strip().casefold()
+
+
+def _redundant_alt(alt: str) -> str | None:
+    value = alt.strip()
+    if _FILE_NAME_RE.match(value):
+        return f'alt="{value}" is a file name; describe what the image shows or does'
+    if _normalized(value) in _PLACEHOLDER_WORDS:
+        return (
+            f'alt="{value}" says nothing about the image; describe it, '
+            'or use alt="" if it is decorative'
+        )
+    if _REDUNDANT_PREFIX_RE.match(value):
+        return (
+            f'alt="{value}" starts with words screen readers already say ("image"); '
+            "describe the content only"
+        )
+    return None
+
+
+@rule(
+    code="RL107",
+    name="image-redundant-alt",
+    summary="Image alt text must describe the image, not repeat a file name or nearby text.",
+    wcag="1.1.1 Non-text Content (A)",
+)
+def image_redundant_alt(root: Node) -> Iterator[tuple[Node, str]]:
+    for node in root.iter("img"):
+        alt = node.get("alt")
+        if node.dynamic_attrs or alt is None or not alt.strip() or node.is_dynamic("alt"):
+            continue
+        message = _redundant_alt(alt)
+        if message is not None:
+            yield node, message
+            continue
+        container = next(
+            (a for a in node.ancestors() if a.tag in _CONTAINERS or a.role in _CONTAINERS),
+            None,
+        )
+        if container is None:
+            continue
+        text = static_text(container, skip=node)
+        if text is not None and _normalized(text) == _normalized(alt):
+            element = f"<{container.tag}>"
+            yield (
+                node,
+                f'alt="{alt.strip()}" repeats the text of its {element}, so screen readers '
+                'say it twice; use alt="" on the image',
+            )

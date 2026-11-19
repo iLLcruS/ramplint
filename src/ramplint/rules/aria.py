@@ -254,3 +254,59 @@ def aria_hidden_focus(root: Node) -> Iterator[tuple[Node, str]]:
                     'cannot hear. Add tabindex="-1" or remove aria-hidden'
                 )
             yield node, message
+
+
+# --------------------------------------------------------------------------
+# RL706 aria-prohibited-attr
+# --------------------------------------------------------------------------
+
+#: Roles that must not be named (WAI-ARIA 1.2, "Name From: prohibited").
+_NAME_PROHIBITED_ROLES = frozenset(
+    {
+        "caption", "code", "deletion", "emphasis", "generic", "insertion",
+        "paragraph", "presentation", "none", "strong", "subscript", "superscript",
+    }
+)  # fmt: skip
+#: Implicit roles of elements that are commonly given an aria-label by mistake.
+_IMPLICIT_PROHIBITED = {
+    "div": "generic", "span": "generic", "b": "generic", "i": "generic",
+    "u": "generic", "s": "generic", "small": "generic", "bdi": "generic",
+    "bdo": "generic", "data": "generic", "samp": "generic", "pre": "generic",
+    "q": "generic", "p": "paragraph", "code": "code", "del": "deletion",
+    "ins": "insertion", "em": "emphasis", "strong": "strong", "sub": "subscript",
+    "sup": "superscript",
+}  # fmt: skip
+
+
+@rule(
+    code="RL706",
+    name="aria-prohibited-attr",
+    summary="aria-label and aria-labelledby must not be used on elements that cannot be named.",
+    wcag="4.1.2 Name, Role, Value (A)",
+)
+def aria_prohibited_attr(root: Node) -> Iterator[tuple[Node, str]]:
+    for node in root.iter():
+        if node.dynamic_attrs:
+            continue
+        attributes = [a for a in ("aria-label", "aria-labelledby") if node.has_value(a)]
+        if not attributes:
+            continue
+        if node.get("role") is not None and node.get("role", "").strip():
+            role = effective_role(node)
+            if role is None or role not in _NAME_PROHIBITED_ROLES:
+                continue  # a valid nameable role, or RL701 reports it
+            described = f'<{node.tag} role="{node.role}">'
+        else:
+            role = _IMPLICIT_PROHIBITED.get(node.tag)
+            if role is None:
+                continue
+            if node.get("tabindex") is not None:
+                continue  # focusable: likely a widget missing its role (RL507 area)
+            described = f"<{node.tag}>"
+        names = " and ".join(attributes)
+        yield (
+            node,
+            f"{names} on {described} (role {role}) is ignored by screen readers; "
+            'give the element a role that can be named (e.g. role="img" or role="group") '
+            "or put the text in the content, visually hidden if needed",
+        )

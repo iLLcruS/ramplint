@@ -137,6 +137,14 @@
 {# Decorative image with an intentionally empty alt. #}
 <img src="{% static 'img/divider.png' %}" alt="">
 
+{# Names: an aria-label that starts with the visible text, a rating with a role,
+   a symbol-only close button and an image next to its own caption. #}
+<button type="button" aria-label="Search products">Search</button>
+<span role="img" aria-label="4 out of 5 stars">★★★★☆</span>
+<button type="button" aria-label="Close">×</button>
+<a href="{% url 'cart' %}"><img src="{% static 'img/cart.svg' %}" alt=""> Cart</a>
+<a href="{% url 'profile' %}" aria-label="Profile">{{ user.get_full_name }}</a>
+
 {# A known exception, silenced inline. #}
 <img src="{% static 'img/tracking-pixel.gif' %}"> {# ramplint: ignore img-alt #}
 {% endblock %}

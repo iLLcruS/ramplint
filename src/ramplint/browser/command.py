@@ -57,8 +57,6 @@ BROWSER_OPTIONS = (
     "auth",
     "save_auth",
     "embed_screenshots",
-    "baseline",
-    "write_baseline",
 )
 
 #: Where Django sends users who must log in, unless ``LOGIN_URL`` says otherwise.
@@ -148,18 +146,6 @@ def add_browser_arguments(parser: argparse.ArgumentParser) -> None:
         default=None,
         help="with --format html -o FILE.html: one file with the screenshots inside "
         "(without it, -o DIR/ writes a report folder)",
-    )
-    add(
-        "--baseline",
-        type=Path,
-        metavar="SCAN_JSON",
-        help="compare with an earlier scan.json: report only new problems and fail only on them",
-    )
-    add(
-        "--write-baseline",
-        type=Path,
-        metavar="FILE",
-        help="write the scan (scan.json) to FILE, to use with --baseline later",
     )
     add(
         "--max-states",

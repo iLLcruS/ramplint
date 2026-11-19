@@ -80,6 +80,17 @@ def report_context() -> ReportContext:
 
 
 @contextmanager
+def baseline_report(fixed: Sequence[dict[str, object]] = ()) -> Iterator[ReportContext]:
+    """Template reports written inside this block show what a ``--baseline`` lost."""
+    context = ReportContext(fixed=tuple(fixed))
+    token = _CONTEXT.set(context)
+    try:
+        yield context
+    finally:
+        _CONTEXT.reset(token)
+
+
+@contextmanager
 def browser_report(
     viewports: Sequence[str],
     page_links: dict[str, str] | None = None,

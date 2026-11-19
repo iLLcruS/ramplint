@@ -21,9 +21,17 @@ from ramplint.reporters import (
     STATISTICS_WRITERS,
     WriteReport,
     available_formats,
+    baseline_report,
     summary_line,
 )
-from ramplint.rules import all_rules, find_rule, rule_docs, select_rules, unknown_selectors
+from ramplint.rules import (
+    Rule,
+    all_rules,
+    find_rule,
+    rule_docs,
+    select_rules,
+    unknown_selectors,
+)
 
 __all__ = ["EXIT_ERROR", "EXIT_INTERRUPTED", "EXIT_OK", "EXIT_VIOLATIONS", "build_parser", "main"]
 
@@ -116,6 +124,33 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-color", action="store_true", help="disable colored output")
     parser.add_argument(
         "--exit-zero", action="store_true", help="exit with 0 even if problems are found"
+    )
+    parser.add_argument(
+        "--fix",
+        action="store_true",
+        help="fix problems with one obvious fix in place (scope, autocomplete, tabindex, "
+        "viewport and lang values), then report the rest",
+    )
+    parser.add_argument(
+        "--changed",
+        nargs="?",
+        const="HEAD",
+        metavar="REF",
+        help="lint only the files changed since the git commit REF (e.g. origin/main), "
+        "including uncommitted and untracked files (default REF: HEAD)",
+    )
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        metavar="SCAN_JSON",
+        help="compare with an earlier --write-baseline file (or a browser scan.json): "
+        "report only new problems and fail only on them",
+    )
+    parser.add_argument(
+        "--write-baseline",
+        type=Path,
+        metavar="FILE",
+        help="write the problems found to FILE, to use with --baseline later",
     )
     parser.add_argument("--list-rules", action="store_true", help="list available rules and exit")
     parser.add_argument(
@@ -218,6 +253,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     rules = select_rules(select, ignore)
 
     urls = [p for p in args.paths if is_url(p)]
+    if args.fix and (urls or args.runserver):
+        print("ramplint: error: --fix works with templates, not URLs", file=sys.stderr)
+        return EXIT_ERROR
+    if args.changed is not None and (urls or args.runserver):
+        print("ramplint: error: --changed works with templates, not URLs", file=sys.stderr)
+        return EXIT_ERROR
     used = [name for name in BROWSER_OPTIONS if getattr(args, name) is not None]
     base_url = config.browser.get("base_url")
     if args.runserver:
@@ -262,6 +303,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"ramplint: error: {exc}", file=sys.stderr)
         return EXIT_ERROR
 
+    if args.changed is not None and args.write_baseline is not None:
+        print(
+            "ramplint: error: --write-baseline needs every file; do not use it with --changed",
+            file=sys.stderr,
+        )
+        return EXIT_ERROR
+    if args.changed is not None and not args.list_templates:
+        from ramplint.changed import ChangedFilesError, changed_files, only_changed
+
+        try:
+            files = only_changed(files, changed_files(args.changed))
+        except ChangedFilesError as exc:
+            print(f"ramplint: error: {exc}", file=sys.stderr)
+            return EXIT_ERROR
+        if args.verbose:
+            print(f"ramplint: {len(files)} changed files since {args.changed}", file=sys.stderr)
+
     if args.list_templates:
         if args.format not in (None, "text", "json"):
             print(
@@ -274,7 +332,108 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.verbose:
         print_verbose(workspace, files, sys.stderr)
 
-    return _write_output(args, workspace.lint(files, rules), len(files))
+    if args.fix and not _fix_files(files, rules):
+        return EXIT_ERROR
+    checked = {path.as_posix() for path in files} if args.changed is not None else None
+    return _lint_templates(args, workspace.lint(files, rules), len(files), checked)
+
+
+def _fix_files(files: list[Path], rules: list[Rule]) -> bool:
+    """``--fix``: rewrite the templates in place; False if one cannot be written."""
+    from ramplint.fix import fix_source
+
+    fixed = changed = 0
+    for path in files:
+        if path.suffix == ".py":
+            continue
+        try:
+            with open(path, encoding="utf-8", newline="") as fh:
+                source = fh.read()
+        except (OSError, UnicodeDecodeError):
+            continue  # linting reports what it can read
+        new_source, fixes = fix_source(source, rules)
+        if not fixes or new_source == source:
+            continue
+        try:
+            with open(path, "w", encoding="utf-8", newline="") as fh:
+                fh.write(new_source)
+        except OSError as exc:
+            print(f"ramplint: error: cannot write {path}: {exc}", file=sys.stderr)
+            return False
+        fixed += len(fixes)
+        changed += 1
+    if fixed:
+        plural = "s" if fixed != 1 else ""
+        files_word = "file" if changed == 1 else "files"
+        print(f"ramplint: fixed {fixed} problem{plural} in {changed} {files_word}", file=sys.stderr)
+    return True
+
+
+def _lint_templates(
+    args: argparse.Namespace,
+    violations: list[Violation],
+    files_checked: int,
+    checked: set[str] | None = None,
+) -> int:
+    """Report template problems, compared with ``--baseline`` when it is given.
+
+    ``checked`` (with ``--changed``) limits the baseline to the files linted, so
+    problems in files that were not checked are not counted as fixed.
+    """
+    from ramplint.baselines import write_template_baseline
+    from ramplint.browser.baseline import EXISTING, BaselineError, compare, load_baseline
+
+    fixed: list[dict[str, object]] = []
+    if args.baseline is not None:
+        try:
+            baseline = load_baseline(args.baseline)
+        except BaselineError as exc:
+            print(f"ramplint: error: {exc}", file=sys.stderr)
+            return EXIT_ERROR
+        if checked is not None:
+            baseline = [entry for entry in baseline if entry.get("path") in checked]
+        comparison = compare(violations, baseline)
+        violations, fixed = comparison.violations, comparison.fixed
+        print(
+            f"ramplint: compared with {args.baseline}: {len(comparison.new)} new, "
+            f"{len(comparison.existing)} existing, {len(fixed)} fixed",
+            file=sys.stderr,
+        )
+    if args.write_baseline is not None:
+        try:
+            write_template_baseline(args.write_baseline, violations, files_checked)
+        except OSError as exc:
+            print(
+                f"ramplint: error: cannot write baseline {args.write_baseline}: {exc}",
+                file=sys.stderr,
+            )
+            return EXIT_ERROR
+        print(
+            f"ramplint: baseline with {len(violations)} problems written to {args.write_baseline}",
+            file=sys.stderr,
+        )
+    if args.baseline is None:
+        code = _write_output(args, violations, files_checked)
+        # Every problem found is in the new baseline: nothing new to fail on.
+        return EXIT_OK if args.write_baseline is not None and code != EXIT_ERROR else code
+
+    shown = violations
+    text_like = (args.format or "text") in ("text", "github") and not args.statistics
+    if text_like and args.output is None:
+        shown = [v for v in violations if v.baseline != EXISTING]
+        hidden = len(violations) - len(shown)
+        if hidden or fixed:
+            print(
+                f"ramplint: {hidden} existing and {len(fixed)} fixed problems are not shown "
+                f"(baseline {args.baseline})",
+                file=sys.stderr,
+            )
+    with baseline_report(fixed):
+        code = _write_output(args, shown, files_checked)
+    if code == EXIT_ERROR:
+        return code
+    failing = any(v.baseline != EXISTING for v in violations)
+    return EXIT_VIOLATIONS if failing and not args.exit_zero else EXIT_OK
 
 
 def _workspace(args: argparse.Namespace, config: Config) -> Workspace:
