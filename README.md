@@ -1030,13 +1030,15 @@ problems that only appear after rendering (an empty context variable, the
 ```python
 from ramplint.testing import assert_accessible
 
-def test_product_list(client):            # pytest-django
+
+def test_product_list(client):  # pytest-django
     assert_accessible(client.get("/products/"))
 ```
 
 ```python
 from django.test import TestCase
 from ramplint.testing import AccessibilityTestMixin
+
 
 class ProductTests(AccessibilityTestMixin, TestCase):
     def test_list(self):

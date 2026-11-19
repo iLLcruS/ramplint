@@ -144,7 +144,7 @@ def test_cli_fix_cannot_write(project, capsys, monkeypatch):
 
     monkeypatch.setattr("builtins.open", fake_open)
     assert main(["--fix"]) == EXIT_ERROR
-    assert "cannot write templates/a.html" in capsys.readouterr().err
+    assert f"cannot write {Path('templates') / 'a.html'}" in capsys.readouterr().err
 
 
 def test_cli_fix_does_not_work_with_urls(project, capsys):

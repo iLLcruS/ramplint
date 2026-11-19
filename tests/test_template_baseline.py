@@ -24,7 +24,8 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_write_baseline_succeeds_and_stores_fingerprints(project, capsys):
     assert main(["--no-color", "--write-baseline", "a11y/baseline.json"]) == EXIT_OK
     captured = capsys.readouterr()
-    assert "baseline with 2 problems written to a11y/baseline.json" in captured.err
+    target = Path("a11y") / "baseline.json"
+    assert f"baseline with 2 problems written to {target}" in captured.err
     assert "RL101" in captured.out  # the report is still printed
     data = json.loads((project / "a11y" / "baseline.json").read_text())
     assert data["schema"] == 1
