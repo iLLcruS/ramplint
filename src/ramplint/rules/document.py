@@ -154,11 +154,11 @@ _LANGTAG_RE = re.compile(
 _PRIVATE_OR_GRANDFATHERED_RE = re.compile(r"^(x|i)(-[a-z\d]{1,8})+$")
 
 
-def _lang_problem(value: str) -> str | None:
-    """Why ``value`` is not a usable BCP 47 language tag, or None."""
+def _lang_check(value: str) -> tuple[bool, str | None]:
+    """``(valid, suggestion)`` for a ``lang`` value."""
     tag = value.strip().lower()
     if not tag or _PRIVATE_OR_GRANDFATHERED_RE.match(tag):
-        return None
+        return True, None
     suggestion = lang_data.SUGGESTIONS.get(tag)
     if suggestion is None and "_" in tag:
         suggestion = value.strip().replace("_", "-")
@@ -166,8 +166,22 @@ def _lang_problem(value: str) -> str | None:
     if match:
         language = match.group("language")
         if len(language) == 3 or language in lang_data.TWO_LETTER_LANGUAGES:
-            return None
+            return True, None
         suggestion = suggestion or lang_data.SUGGESTIONS.get(language)
+    return False, suggestion
+
+
+def lang_correction(value: str) -> str | None:
+    """The valid language tag the author most likely meant, or None."""
+    valid, suggestion = _lang_check(value)
+    return None if valid else suggestion
+
+
+def _lang_problem(value: str) -> str | None:
+    """Why ``value`` is not a usable BCP 47 language tag, or None."""
+    valid, suggestion = _lang_check(value)
+    if valid:
+        return None
     hint = f'; did you mean "{suggestion}"?' if suggestion else ""
     return f"is not a valid language tag (use codes like en, en-GB, ro, uk){hint}"
 

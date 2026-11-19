@@ -8,6 +8,7 @@
 | [RL104](RL104.md) | `svg-img-alt` | &lt;svg role="img"> must have an accessible name. |
 | [RL105](RL105.md) | `object-alt` | &lt;object> and &lt;embed> must have a text alternative. |
 | [RL106](RL106.md) | `media-autoplay` | Media must not play sound automatically. |
+| [RL107](RL107.md) | `image-redundant-alt` | Image alt text must describe the image, not repeat a file name or nearby text. |
 | [RL201](RL201.md) | `table-header` | Data tables must use &lt;th> header cells. |
 | [RL202](RL202.md) | `th-scope` | scope must be row, col, rowgroup or colgroup, and only used on &lt;th>. |
 | [RL203](RL203.md) | `empty-table-header` | Table header cells must have text. |
@@ -30,6 +31,7 @@
 | [RL505](RL505.md) | `nested-interactive` | Interactive elements must not contain other interactive elements. |
 | [RL506](RL506.md) | `duplicate-accesskey` | accesskey values must be unique within a template. |
 | [RL507](RL507.md) | `focusable-role` | Elements with an interactive role must be focusable. |
+| [RL508](RL508.md) | `label-in-name` | An aria-label must contain the text shown on the control. |
 | [RL601](RL601.md) | `html-lang` | The &lt;html> element must declare the page language. |
 | [RL602](RL602.md) | `viewport-zoom` | The viewport meta tag must not disable zooming. |
 | [RL603](RL603.md) | `document-title` | Pages must have a non-empty &lt;title>. |
@@ -41,6 +43,7 @@
 | [RL703](RL703.md) | `aria-valid-attr-value` | ARIA attribute values must match the attribute's type. |
 | [RL704](RL704.md) | `aria-required-attr` | Elements with a role must have the ARIA attributes that role requires. |
 | [RL705](RL705.md) | `aria-hidden-focus` | Content with aria-hidden="true" must not be focusable. |
+| [RL706](RL706.md) | `aria-prohibited-attr` | aria-label and aria-labelledby must not be used on elements that cannot be named. |
 | [RL801](RL801.md) | `color-contrast` | Text must have a contrast of at least 4.5:1 (3:1 for large text). |
 | [RL802](RL802.md) | `target-size` | Clickable targets must be at least 24 by 24 CSS pixels, or have room around them. |
 | [RL803](RL803.md) | `reflow` | Content must fit a 320 CSS pixel wide screen without scrolling sideways. |

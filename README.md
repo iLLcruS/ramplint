@@ -46,7 +46,7 @@ examples/templates/accounts/login.html:10:3: RL401 <input type="text"> has no as
 ...
 examples/templates/products/detail.html:28:3: RL101 <input type="image"> needs a non-empty alt attribute describing the action [img-alt]
 
-Found 62 problems in 16 of 24 files.
+Found 66 problems in 17 of 25 files.
 ```
 
 See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/examples/README.md) for what each demo template contains.
@@ -56,11 +56,13 @@ See [`examples/README.md`](https://github.com/iLLcruS/ramplint/blob/main/example
 - **Knows your Django project.** Reads `TEMPLATES` and `INSTALLED_APPS` from your settings (without importing them) and lints exactly the folders Django loads templates from.
 - **Checks Django forms.** Finds fields rendered with `{{ field }}` or `{% render_field %}` but no label, empty `label=""` in `forms.py`, and custom widgets that lose the id their `<label for>` points to.
 - **Sees across templates.** Follows `{% extends %}` and `{% include %}`: a skipped heading after the `<h1>` in `base.html`, an empty page title or a label for a field in an included partial are all checked.
-- **50 rules.** Images, tables, lists, landmarks, forms, controls, page language and WAI-ARIA in templates, plus contrast, focus, target size, reflow and site-wide consistency in the browser scan, each with a documentation page.
+- **53 rules.** Images, tables, lists, landmarks, forms, controls, page language and WAI-ARIA in templates, plus contrast, focus, target size, reflow and site-wide consistency in the browser scan, each with a documentation page.
 - **Template-aware.** Django and Jinja2 tags, variables and comments are understood, not stripped blindly.
 - **Low noise.** If something is only known at render time (`{% include %}`, `{{ form.email }}`, `{{ widget.attrs }}`, `{% block %}`), ramplint assumes the best and stays quiet.
 - **Zero dependencies.** Pure Python standard library (plus `tomli` on Python < 3.11).
 - **Made for CI.** Exit codes, JSON output, GitHub Actions annotations and a pre-commit hook.
+- **Fits existing projects.** A baseline fails CI only on new problems, `--changed origin/main` checks only what a pull request touched, and `--fix` rewrites the values with one obvious fix.
+- **In your tests.** `assert_accessible(client.get("/"))` checks the HTML your views render, no browser needed.
 - **Fast.** No browser and no rendering. A whole project is checked in well under a second.
 - **Also in the browser.** `ramplint --runserver` crawls your Django project in Chromium, opens menus and dialogs, and reports problems at the template lines that produced them (`pip install "ramplint[browser]"`).
 
@@ -88,11 +90,53 @@ ramplint -o report.json --format json  # save the report to a file
 ramplint -o a11y-report.html --format html  # shareable HTML report
 ramplint --list-rules
 ramplint --explain RL303        # what a rule checks and how to fix it
+ramplint --fix                  # fix scope, autocomplete, tabindex, viewport and lang values
+ramplint --changed origin/main  # only the files changed on this branch
+ramplint --write-baseline a11y-baseline.json  # record today's problems once
+ramplint --baseline a11y-baseline.json        # then fail only on new ones
 ```
 
 By default ramplint looks at `.html`, `.htm`, `.jinja`, `.jinja2`, `.j2` and
 `.djhtml` files and skips folders such as `node_modules`, `.venv`, `build` and `dist`.
 Files passed explicitly are always checked, whatever their extension.
+
+### Fixing problems automatically
+
+`--fix` rewrites attribute values where the fix is not in doubt, then reports
+what is left:
+
+| Rule | Before | After |
+|------|--------|-------|
+| `RL202` th-scope | `<th scope="column">` | `<th scope="col">` |
+| `RL402` autocomplete-valid | `autocomplete="emial"`, `"zip"` | `"email"`, `"postal-code"` |
+| `RL503` no-positive-tabindex | `tabindex="3"` | `tabindex="0"` |
+| `RL602` viewport-zoom | `content="width=device-width, user-scalable=no"` | `content="width=device-width"` |
+| `RL604` valid-lang | `lang="ua"`, `lang="en_US"` | `lang="uk"`, `lang="en-US"` |
+
+Values built by the template (`{{ }}`, `{% %}`), problems silenced with
+`ramplint: ignore` and guesses (`autocomplete="password"`: current or new?)
+are left alone. Line endings and everything else in the file stay as they were.
+
+### Existing projects: baselines and changed files
+
+Turning a linter on in a big project shows hundreds of old problems. Record
+them once and fail only on new ones:
+
+```bash
+ramplint --write-baseline a11y-baseline.json   # commit this file
+ramplint --baseline a11y-baseline.json         # in CI: "0 new, 212 existing, 3 fixed"
+```
+
+Problems are matched by rule, file and message, not by line, so editing a
+template above an old problem keeps it *existing*. JSON, SARIF
+(`baselineState`) and HTML reports keep every problem marked *new* or
+*existing*; the HTML report also lists what was fixed.
+
+`--changed REF` lints only the templates and forms modules changed since the
+commit where your branch left `REF`, plus uncommitted and untracked files
+(`--changed` alone: changes not committed yet). Problems inherited from a
+changed `base.html` are reported in the child templates only when those are
+checked too.
 
 ## Django projects
 
@@ -209,6 +253,7 @@ $ ramplint examples/ --statistics
 5  RL101  img-alt
 4  RL501  button-name
 3  RL301  heading-order
+2  RL107  image-redundant-alt
 2  RL201  table-header
 2  RL306  landmark-one-main
 2  RL603  document-title
@@ -233,6 +278,7 @@ $ ramplint examples/ --statistics
 1  RL505  nested-interactive
 1  RL506  duplicate-accesskey
 1  RL507  focusable-role
+1  RL508  label-in-name
 1  RL601  html-lang
 1  RL602  viewport-zoom
 1  RL604  valid-lang
@@ -243,8 +289,9 @@ $ ramplint examples/ --statistics
 1  RL703  aria-valid-attr-value
 1  RL704  aria-required-attr
 1  RL705  aria-hidden-focus
+1  RL706  aria-prohibited-attr
 
-Found 62 problems in 16 of 24 files.
+Found 66 problems in 17 of 25 files.
 ```
 
 It works with `--format text` (default) and `--format json`.
@@ -424,6 +471,7 @@ Ctrl+C stops a scan, closes the browser and exits with 130.
 | [`RL104`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL104.md) | `svg-img-alt` | `<svg role="img">` has a `<title>` or `aria-label` | 1.1.1 (A) |
 | [`RL105`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL105.md) | `object-alt` | `<object>` has fallback text or a label; `<embed>` has a `title` or `aria-label` | 1.1.1 (A) |
 | [`RL106`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL106.md) | `media-autoplay` | `<video autoplay>` / `<audio autoplay>` are `muted` | 1.4.2 (A) |
+| [`RL107`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL107.md) | `image-redundant-alt` | `alt` is not a file name, a placeholder word or a copy of the link text | 1.1.1 (A) |
 | [`RL201`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL201.md) | `table-header`  | Data tables use real `<th>` header cells                                                 | 1.3.1 (A)        |
 | [`RL202`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL202.md) | `th-scope` | `scope` is `row`, `col`, `rowgroup` or `colgroup`, and only used on `<th>` | 1.3.1 (A) |
 | [`RL203`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL203.md) | `empty-table-header` | `<th>` cells are not empty (the top-left corner cell is allowed) | 1.3.1 (A) |
@@ -446,6 +494,7 @@ Ctrl+C stops a scan, closes the browser and exits with 130.
 | [`RL505`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL505.md) | `nested-interactive` | No buttons, links or other controls inside `<a href>` or `<button>` | 4.1.2 (A) |
 | [`RL506`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL506.md) | `duplicate-accesskey` | `accesskey` values are unique | Best practice |
 | [`RL507`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL507.md) | `focusable-role` | Elements with an interactive role can get keyboard focus (`<div role="switch">` needs `tabindex`) | 2.1.1, 4.1.2 (A) |
+| [`RL508`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL508.md) | `label-in-name` | `aria-label` contains the visible text (voice control) | 2.5.3 (A) |
 | [`RL601`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL601.md) | `html-lang`     | `<html>` declares the page language                                                      | 3.1.1 (A)        |
 | [`RL602`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL602.md) | `viewport-zoom` | `<meta name="viewport">` does not disable zoom (`user-scalable=no`, `maximum-scale` < 2) | 1.4.4 (AA)       |
 | [`RL603`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL603.md) | `document-title` | Full-page templates have a non-empty `<title>` | 2.4.2 (A) |
@@ -457,6 +506,7 @@ Ctrl+C stops a scan, closes the browser and exits with 130.
 | [`RL703`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL703.md) | `aria-valid-attr-value` | ARIA values match their type (`aria-hidden="yes"`, missing `aria-labelledby` ids) | 4.1.2 (A) |
 | [`RL704`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL704.md) | `aria-required-attr` | Roles have their required states (`role="switch"` needs `aria-checked`) | 4.1.2 (A) |
 | [`RL705`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL705.md) | `aria-hidden-focus` | Nothing focusable inside `aria-hidden="true"` | 4.1.2 (A) |
+| [`RL706`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL706.md) | `aria-prohibited-attr` | No `aria-label` on `<div>`, `<span>` and other elements that cannot be named | 4.1.2 (A) |
 | [`RL801`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL801.md) | `color-contrast` | Text contrast is at least 4.5:1 (3:1 for large text) (browser scan) | 1.4.3 (AA) |
 | [`RL802`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL802.md) | `target-size` | Clickable targets are 24x24 px or have room around them (browser scan) | 2.5.8 (AA) |
 | [`RL803`](https://github.com/iLLcruS/ramplint/blob/main/docs/rules/RL803.md) | `reflow` | Pages do not scroll sideways at 320 px (browser scan) | 1.4.10 (AA) |
@@ -522,6 +572,14 @@ Frames hidden with `aria-hidden="true"` are skipped.
 ```django
 {# ✗ #} <audio autoplay src="{% static 'jingle.mp3' %}"></audio>
 {# ✓ #} <audio controls src="{% static 'jingle.mp3' %}"></audio>
+```
+
+#### RL107 `image-redundant-alt`
+
+```django
+{# ✗ #} <img src="{{ user.avatar.url }}" alt="avatar.png">
+{# ✗ #} <a href="{% url 'cart' %}"><img src="cart.svg" alt="Cart"> Cart</a>
+{# ✓ #} <a href="{% url 'cart' %}"><img src="cart.svg" alt=""> Cart</a>
 ```
 
 #### RL201 `table-header`
@@ -744,6 +802,15 @@ button) differently, and the inner one is often unreachable by keyboard.
 Any `tabindex` (including `-1` for roving focus) is accepted; options, tree
 items and grid cells are skipped because their container usually manages focus.
 
+#### RL508 `label-in-name`
+
+```django
+{# ✗ #} <button aria-label="Mark this review as useful">Helpful</button>
+{# ✓ #} <button aria-label="Helpful review">Helpful</button>
+```
+
+Voice control users say what they see. Symbols such as `×` are not checked.
+
 #### RL601 `html-lang`
 
 ```django
@@ -797,7 +864,7 @@ Country codes and language names get a suggestion: `ua` → `uk`, `cz` → `cs`,
 {# ✓ #} <p class="banner">{% trans "Free shipping!" %}</p>
 ```
 
-#### RL701–RL705: ARIA
+#### RL701–RL706: ARIA
 
 ```django
 {# ✗ #} <div role="dailog" aria-modal="true">…</div>
@@ -805,6 +872,8 @@ Country codes and language names get a suggestion: `ua` → `uk`, `cz` → `cs`,
 {# ✗ #} <div class="backdrop" aria-hidden="yes"></div>
 {# ✗ #} <div role="switch" tabindex="0">Dark mode</div>
 {# ✗ #} <div aria-hidden="true"><a href="/">Home</a></div>
+{# ✗ #} <span class="stars" aria-label="4 out of 5 stars">★★★★☆</span>
+{# ✓ #} <span class="stars" role="img" aria-label="4 out of 5 stars">★★★★☆</span>
 {# ✓ #} <div role="switch" tabindex="0" aria-checked="false">Dark mode</div>
 {# ✓ #} <div aria-hidden="true"><a href="/" tabindex="-1">Home</a></div>
 ```
@@ -869,9 +938,10 @@ line, `--settings MODULE` and `--no-django` do the same.
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/iLLcruS/ramplint
-    rev: 0.7.1
+    rev: 0.8.0
     hooks:
       - id: ramplint
+        # args: [--fix]   # fix what can be fixed before the commit
 ```
 
 ## GitHub Actions
@@ -882,6 +952,17 @@ problems appear as annotations right in the pull request diff.
 ```yaml
 - run: pip install ramplint
 - run: ramplint templates/
+```
+
+In pull requests, check only what the branch changed (fetch the base branch
+first) and fail only on problems that are not in the baseline:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+- run: pip install ramplint
+- run: ramplint --changed origin/${{ github.base_ref }} --baseline a11y-baseline.json
 ```
 
 ### Browser scan in CI
@@ -940,6 +1021,42 @@ jobs:
           category: ramplint
 ```
 
+## In your tests
+
+`ramplint.testing` runs the template rules on the HTML your views return, so
+problems that only appear after rendering (an empty context variable, the
+`{% if %}` branch a test takes) are caught by your test suite. No browser.
+
+```python
+from ramplint.testing import assert_accessible
+
+
+def test_product_list(client):  # pytest-django
+    assert_accessible(client.get("/products/"))
+```
+
+```python
+from django.test import TestCase
+from ramplint.testing import AccessibilityTestMixin
+
+
+class ProductTests(AccessibilityTestMixin, TestCase):
+    def test_list(self):
+        self.assertAccessible(self.client.get("/products/"), ignore=["RL306"])
+```
+
+A failure lists every problem with its line in the response:
+
+```
+AssertionError: 1 accessibility problem in /products/:
+  14:9: RL101 <img> is missing an alt attribute (use alt="" for decorative images) [img-alt] (catalog/product_list.html:6:5)
+```
+
+`select` and `ignore` of `[tool.ramplint]` apply. Non-HTML responses (JSON,
+files) pass. With `ramplint.django.SourceMapLoader` in your test settings
+(`DEBUG = True`), problems name the template line, as in the example above.
+`check_html()` and `check_response()` return the problems instead of failing.
+
 ## Python API
 
 ```python
@@ -963,7 +1080,7 @@ testing.
 - [x] HTML report and SARIF output for GitHub Code Scanning
 - [x] Find Django template folders from the settings; follow `{% extends %}` / `{% include %}`
 - [x] Browser scan: crawl a Django project, menus and dialogs, rendered-page and site-wide rules, template source maps, report with screenshots, baselines
-- [ ] `--fix` for safe autofixes (e.g. `scope="col"` on header rows)
+- [x] `--fix` for safe autofixes, baselines and `--changed` for the template linter, `ramplint.testing` for test suites
 - [ ] Check partials against the templates that include them (a `<label>` in the page, the field in the partial)
 - [ ] Jinja2 macros
 - [ ] VS Code extension

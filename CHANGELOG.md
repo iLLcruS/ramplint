@@ -6,6 +6,53 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-19
+
+### Added
+
+- **Baselines for the template linter.** `--write-baseline FILE` records the
+  problems found and `--baseline FILE` reports them as new, existing or fixed
+  and fails only on new ones, without URLs (until now this needed a browser
+  scan). Problems are matched by rule, file and message, not by line. The
+  file is a `scan.json` (schema 1), the same format the browser scan uses.
+- **`--changed [REF]`** lints only the templates and forms modules changed
+  since the commit where the branch left `REF` (e.g. `origin/main`),
+  including uncommitted and untracked files; without `REF`, the changes not
+  committed yet. With `--baseline`, problems in files that were not checked
+  are not counted as fixed.
+- **`--fix`** rewrites attribute values that have one obvious fix, then
+  reports the rest: `RL202` scope typos (`column` -> `col`), `RL402`
+  autocomplete typos and aliases (`emial` -> `email`, `zip` ->
+  `postal-code`; never passwords), `RL503` positive `tabindex` -> `0`,
+  `RL602` `user-scalable=no` and `maximum-scale` below 2 removed from the
+  viewport, `RL604` language tags (`ua` -> `uk`, `en_US` -> `en-US`).
+  Template-built values and suppressed problems are left alone; line endings
+  are kept.
+- **`ramplint.testing`**: `assert_accessible(response)`,
+  `AccessibilityTestMixin.assertAccessible()`, `check_response()` and
+  `check_html()` run the template rules on HTML rendered by the Django test
+  client, with `[tool.ramplint]` `select` / `ignore` applied. With
+  `SourceMapLoader` active, problems name the template line.
+- New rules (ramplint now has 53):
+  - `RL107` image-redundant-alt: `alt` that is a file name, a placeholder
+    word (`image`, `photo`, `icon`), starts with "image of", or repeats the
+    text of the link or button the image is in.
+  - `RL508` label-in-name: an `aria-label` that does not contain the visible
+    text of the link or button (WCAG 2.5.3, voice control).
+  - `RL706` aria-prohibited-attr: `aria-label` / `aria-labelledby` on
+    `<div>`, `<span>`, `<p>` and other elements whose role cannot be named.
+- SARIF results carry `baselineState` (`new` / `unchanged`) when compared with
+  a baseline, also in the browser scan.
+- Demo: `examples/templates/reviews/review_card.html`.
+
+### Changed
+
+- `--baseline` and `--write-baseline` are general options (listed outside
+  "browser scan" in `--help`); using them without URLs no longer fails with
+  "needs URLs".
+- `--write-baseline` on templates exits with 0: every problem found is in the
+  new baseline.
+
 ## [0.7.1] - 2026-11-07
 
 The first release of the browser scan on PyPI: 0.7.0 was tagged but its
@@ -328,7 +375,8 @@ release build failed, so it was never published. Everything listed under
 - Configuration via `[tool.ramplint]` in `pyproject.toml`.
 - pre-commit hook.
 
-[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.7.1...HEAD
+[Unreleased]: https://github.com/iLLcruS/ramplint/compare/0.8.0...HEAD
+[0.8.0]: https://github.com/iLLcruS/ramplint/compare/0.7.1...0.8.0
 [0.7.1]: https://github.com/iLLcruS/ramplint/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/iLLcruS/ramplint/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/iLLcruS/ramplint/compare/0.5.1...0.6.0

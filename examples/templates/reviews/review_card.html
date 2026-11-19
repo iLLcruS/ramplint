@@ -1,0 +1,18 @@
+{% load i18n static %}
+{# A product review card: names that screen readers and voice control get wrong. #}
+<article class="review">
+  <img src="{{ review.author.avatar.url }}" alt="avatar.png" class="avatar">
+
+  {# RL706: a <span> cannot be named, the rating is never announced. #}
+  <span class="stars" aria-label="4 out of 5 stars">★★★★☆</span>
+
+  <p>{{ review.text }}</p>
+
+  {# RL107: the image repeats the link text, so it is read twice. #}
+  <a href="{% url 'product' review.product.slug %}">
+    <img src="{% static 'img/cart.svg' %}" alt="Buy now"> Buy now
+  </a>
+
+  {# RL508: voice control users say "click Helpful", which does not match. #}
+  <button type="button" aria-label="Mark this review as useful">Helpful</button>
+</article>

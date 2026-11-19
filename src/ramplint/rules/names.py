@@ -8,6 +8,7 @@ side when template placeholders make the answer unknowable.
 from __future__ import annotations
 
 from ramplint.dom import RAW_TEXT_ELEMENTS, Node
+from ramplint.template import PLACEHOLDERS
 
 NAMING_ATTRIBUTES = ("aria-label", "aria-labelledby", "title")
 
@@ -48,3 +49,24 @@ def has_accessible_name(node: Node) -> bool:
     if node.dynamic_attrs or has_naming_attribute(node):
         return True
     return _content_has_name(node)
+
+
+def static_text(node: Node, skip: Node | None = None) -> str | None:
+    """The text in ``node`` (without ``skip``); None if any of it is built at runtime."""
+    parts: list[str] = []
+
+    def walk(element: Node) -> bool:
+        for child in element.children:
+            if isinstance(child, str):
+                if any(p in child for p in PLACEHOLDERS):
+                    return False
+                parts.append(child)
+            elif (
+                child is not skip
+                and child.tag not in RAW_TEXT_ELEMENTS
+                and (child.dynamic_attrs or not walk(child))
+            ):
+                return False
+        return True
+
+    return " ".join(parts) if walk(node) else None

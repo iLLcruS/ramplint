@@ -64,10 +64,16 @@ _SCOPE_VALUES = ("row", "col", "rowgroup", "colgroup")
 _SCOPE_TYPOS = {"column": "col", "columns": "col", "cols": "col", "rows": "row"}
 
 
-def _scope_suggestion(value: str) -> str:
-    match = _SCOPE_TYPOS.get(value) or next(
+def scope_correction(value: str) -> str | None:
+    """The valid ``scope`` value the author most likely meant, or None."""
+    value = value.strip().lower()
+    return _SCOPE_TYPOS.get(value) or next(
         iter(difflib.get_close_matches(value, _SCOPE_VALUES, n=1, cutoff=0.6)), None
     )
+
+
+def _scope_suggestion(value: str) -> str:
+    match = scope_correction(value)
     return f'; did you mean scope="{match}"?' if match else ""
 
 

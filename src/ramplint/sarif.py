@@ -111,6 +111,10 @@ def _rule_descriptors() -> list[dict[str, object]]:
     return descriptors
 
 
+#: ``Violation.baseline`` -> SARIF ``result.baselineState``.
+_BASELINE_STATES = {"new": "new", "existing": "unchanged"}
+
+
 @reporter("sarif", "SARIF 2.1.0 for GitHub Code Scanning and other SAST dashboards")
 def report_sarif(
     violations: Sequence[Violation], files_checked: int, out: TextIO, color: bool = False
@@ -125,6 +129,7 @@ def report_sarif(
             "message": {"text": v.message},
             "locations": [_location(v)],
             **({"properties": _browser_properties(v)} if v.in_browser else {}),
+            **({"baselineState": _BASELINE_STATES[v.baseline]} if v.baseline else {}),
         }
         for v in violations
     ]
